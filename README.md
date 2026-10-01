@@ -12,6 +12,7 @@ Usage mono-utilisateur, sans authentification (MVP) : à faire tourner en local,
 - **Budget** : dépenses par catégorie, prévisionnel (estimé + réservé + payé), engagé et payé comparés au budget cible, alerte à 90 % et en cas de dépassement.
 - **Comparatifs** : critères pondérés (nombre, texte, oui/non, note 1–5 ; sens « plus haut / plus bas = mieux »), tableau côte à côte, score sur 100, meilleure valeur par critère, verdict en une phrase (« X arrive en tête… fait la différence sur… »), statuts option / retenu / écarté, création de la dépense d'un élément retenu.
 - **Aperçu de liens** : coller une URL d'annonce crée l'élément avec image, titre, description et domaine (Open Graph puis JSON-LD), sans jamais bloquer la saisie manuelle.
+- **Import d'annonces depuis le navigateur** : un favori (bookmarklet) ou le copier-coller du texte de la page alimente une page de vérification (prix, note, lits, chambres, nuits, annulation…) qui pré-remplit les critères du comparatif.
 - **Itinéraire** : carte MapLibre, étapes par recherche d'adresse ou clic sur la carte, glisser-déposer, calcul OpenRouteService (distance et durée par tronçon et au total), voiture / vélo / à pied, vue jour par jour à partir des dates et nuits.
 
 ## Prérequis
@@ -40,8 +41,58 @@ Production locale : `npm run build && npm start`.
 | `GEOCODER_CONTACT` | recommandé | Ajouté au User-Agent des appels Photon (`traveler-assist/0.1 (<contact>)`), comme le demande la politique d'usage. |
 | `ORS_BASE_URL` | non | URL d'une instance ORS auto-hébergée (défaut : `https://api.openrouteservice.org`). Utilisé aussi par les tests e2e. |
 | `PHOTON_BASE_URL` | non | URL d'une instance Photon auto-hébergée (défaut : `https://photon.komoot.io`). |
+| `APP_URL` | non | Adresse de l'application injectée dans le favori d'import (défaut : `http://localhost:3000`). À changer si l'app tourne sur un autre port ou une autre machine, puis réinstaller le favori. |
+| `LLM_BASE_URL`, `LLM_MODEL` | non | Active l'extraction d'annonces assistée par LLM (API compatible OpenAI) — voir plus bas. |
+| `LLM_API_KEY` | non | Clé du service LLM, si nécessaire (envoyée en `Authorization: Bearer`). |
 
 Aucune clé n'est exposée au navigateur : pas de variable `NEXT_PUBLIC_*`, les appels ORS, Photon et l'extraction des liens passent par le serveur.
+
+## Importer une annonce depuis le navigateur
+
+Airbnb, Booking et Abritel bloquent les requêtes automatiques : l'aperçu côté serveur ne remonte souvent rien. L'import passe donc par **votre navigateur**, où la page est déjà affichée.
+
+### Installer le favori « Envoyer à Traveler Assist »
+
+Ouvrez **Importer une annonce** (en haut à droite, page `/import/setup`).
+
+- **Chrome, Edge, Brave** : affichez la barre de favoris (Ctrl+Maj+B, ⌘+Maj+B sur Mac) et glissez-y le bouton « Envoyer à Traveler Assist ».
+- **Firefox** : affichez la barre personnelle (Ctrl+Maj+B) et glissez-y le bouton ; à défaut, clic droit sur la barre → « Ajouter un marque-page… » et collez le code copié avec « Copier le code du favori » dans le champ Adresse.
+- **Safari (macOS)** : le glisser n'est pas toujours accepté. Ajoutez n'importe quelle page aux favoris (⌘+D), puis dans « Signets → Modifier les signets », remplacez son adresse par le code copié.
+- **Mobile (iOS, Android)** : même principe que Safari (créer un favori puis modifier son adresse), mais l'exécution d'un favori depuis la barre d'adresse est peu pratique : préférez le copier-coller ci-dessous.
+
+Le favori contient l'adresse de l'application (`APP_URL`) : si elle change, réinstallez-le.
+
+### L'utiliser
+
+Sur la page d'un logement — idéalement avec **vos dates et le nombre de voyageurs saisis**, puisque le prix affiché en dépend — cliquez sur le favori. Il collecte l'URL canonique, les balises `og:*` / `twitter:*`, le `<title>`, les blocs JSON-LD, trois images au plus et le texte visible (30 000 caractères maximum), puis les envoie par un formulaire `POST` dans un nouvel onglet (pas de `fetch`, donc pas de CORS).
+
+`POST /import` ne crée rien : il stocke un import en attente (effacé après 24 h) et redirige vers `/import/[id]`. Là, vous vérifiez les champs extraits — chacun indique discrètement sa provenance (balises de partage, données structurées, texte de la page, IA) et, le cas échéant, une précision (chambre retenue, note convertie, date limite d'annulation) — puis vous choisissez le voyage et le comparatif (ou la création d'un comparatif « Logements »). Les critères correspondants (par nom, puis par unité sans ambiguïté) sont listés et décochables avant validation.
+
+**Copier-coller (secours, mobile)** : dans un comparatif, « Ajouter manuellement » → onglet « Coller le contenu de la page ». Sélectionnez tout le texte de l'annonce, copiez, collez : même extraction, même page de confirmation.
+
+### Règles d'extraction
+
+- Ordre : balises `og:*` → JSON-LD (Accommodation, LodgingBusiness, Product, AggregateRating, Offer) → `<title>` → motifs sur le texte (français et anglais) → LLM facultatif.
+- **Prix total** : le prix « total » affiché, jamais le prix barré. Pour un tableau de chambres (Booking), le **tarif le moins cher dont la capacité couvre le nombre de voyageurs recherché** ; la chambre retenue est indiquée.
+- **Note** ramenée sur 5 (8,2/10 → 4,1/5, la note d'origine est affichée). **Couchages** = nombre de lits (celui de la chambre retenue pour un hôtel).
+- **Nuits et dates** du tarif (année déduite si la page ne l'indique pas), prix par nuit calculé si absent, alerte si le nombre de nuits diffère de la durée du voyage ; **annulation gratuite** avec sa date limite.
+
+### Extraction assistée par LLM (facultative)
+
+Définir `LLM_BASE_URL` et `LLM_MODEL` (et `LLM_API_KEY` si besoin) active un second étage : le texte de la page (tronqué à 20 000 caractères) est envoyé à `POST {LLM_BASE_URL}/chat/completions` avec un schéma JSON strict (`response_format: json_schema`). La réponse est validée champ par champ (zod) et **ne remplit que les champs restés vides** ; les valeurs proposées sont marquées « IA — à vérifier ». Le LLM n'est appelé que s'il manque des champs, une seule fois par import (résultat mis en cache), avec un délai de 30 s ; en cas d'échec, l'extraction classique est conservée sans bloquer.
+
+```bash
+# Ollama en local
+LLM_BASE_URL="http://localhost:11434/v1"
+LLM_MODEL="qwen2.5:7b-instruct"
+
+# Service hébergé compatible OpenAI
+LLM_BASE_URL="https://api.example.com/v1"
+LLM_MODEL="nom-du-modèle"
+LLM_API_KEY="…"
+```
+
+Le serveur doit accepter `response_format` de type `json_schema` (versions récentes d'Ollama, LM Studio, vLLM, OpenAI…). Avec un service distant, **le texte de la page lui est transmis**.
 
 ## Scripts
 
@@ -59,11 +110,14 @@ Aucune clé n'est exposée au navigateur : pas de variable `NEXT_PUBLIC_*`, les 
 ## Tests
 
 - **Vitest** (`tests/unit`) : formatage, tâches, budget, validation, **scoring** (module pur), vue comparatif, parseur d'aperçu (Open Graph / JSON-LD), garde anti-SSRF, téléchargement HTML contre un serveur HTTP local (redirections, gzip, encodage, taille, délai), OpenRouteService (requête, réponse, erreurs), Photon, plan jour par jour, service d'itinéraire avec `fetch` simulé (clé manquante, cache, quota).
-- **Playwright** (`tests/e2e`) : 4 parcours.
+- Import d'annonces : bookmarklet exécuté dans jsdom (code source et version minifiée générée), extraction sur les fiches réelles Airbnb (en) et Booking (fr) fournies et sur des fiches synthétiques clairement marquées (Abritel, Airbnb fr, page HTML avec og/JSON-LD), étage LLM avec `fetch` simulé (réussite, délai dépassé, erreur), validation du payload, correspondance avec les critères.
+- **Playwright** (`tests/e2e`) : 7 parcours.
   1. Créer un voyage, des tâches (retard, filtre, cocher, supprimer) et des dépenses (alerte de dépassement), vérifier le tableau de bord.
   2. Comparer 3 logements sur 5 critères, lire le verdict, écarter, retenir et créer la dépense.
   3. Coller un lien qui échoue (et une adresse locale refusée) : l'élément est créé et se complète à la main.
   4. Road trip de 6 étapes : autocomplétion, réordonnancement au clavier, persistance, changement de mode, suppression, jour par jour, étape non routable.
+  5. Bookmarklet exécuté sur une page d'annonce locale : nouvel onglet, vérification, correction, critères décochés, ajout au comparatif ; envoi invalide.
+  6. Copier-coller de la fiche Airbnb réelle jusqu'aux critères pré-remplis.
 
   Les tests e2e utilisent une base dédiée (`prisma/e2e.db`, recréée à chaque lancement) et un **faux service Photon / ORS local** (`tests/e2e/mock-services.mjs`) : ils ne dépendent ni du réseau ni d'une clé. Le navigateur Chromium de Playwright 1.56 doit être installé (`npx playwright install chromium` si besoin).
 
@@ -71,11 +125,13 @@ Aucune clé n'est exposée au navigateur : pas de variable `NEXT_PUBLIC_*`, les 
 
 ```
 prisma/                 schéma, migrations, seed
-src/app/                pages (App Router) et routes API (/api/geocode, /api/geocode/reverse, /api/directions)
+src/app/                pages (App Router) et routes (/api/geocode, /api/geocode/reverse, /api/directions, POST /import)
 src/components/ui/      composants shadcn/ui
 src/components/…        composants métier (trips, tasks, budget, comparisons, route)
 src/lib/domain/         logique métier pure et testée (budget, tâches, scoring, ORS, Photon, jour par jour…)
 src/lib/link-preview/   extraction Open Graph / JSON-LD (pure)
+src/lib/bookmarklet/    code du favori d'import (source.ts) et génération minifiée
+src/lib/listing-extract/ extraction d'annonces (pure) : og, JSON-LD, motifs FR/EN, LLM, critères
 src/server/             accès base, server actions, services externes (aperçu, géocodage, itinéraire, cache)
 tests/unit, tests/e2e   Vitest et Playwright
 ```
@@ -121,29 +177,37 @@ Au-delà de la stack imposée (Next, React, Tailwind, shadcn/ui, Prisma, MapLibr
 | `@dnd-kit/core`, `/sortable`, `/utilities` | glisser-déposer accessible (souris, tactile, **clavier**) |
 | `better-sqlite3`, `@prisma/adapter-better-sqlite3` | pilote SQLite requis par Prisma 7 |
 | `server-only` | empêche d'importer par erreur du code serveur (base, clés) côté client |
+| `esbuild` | minification du favori d'import à sa génération (déjà présent via tsx et Vitest ; externalisé du bundle Next) |
 | `tsx`, `dotenv` (dev) | exécution du seed TypeScript et chargement de `.env` par la CLI Prisma |
+| `jsdom` (dev) | exécution du bookmarklet dans un DOM de test |
 
-Aucune bibliothèque de scraping, de parsing HTML ou de navigateur headless.
+Aucune bibliothèque de scraping, de parsing HTML ou de navigateur headless ; aucun SDK LLM (simple `fetch` vers une API compatible OpenAI).
 
 ## Limites connues
 
-- **Extraction des annonces** : Airbnb, Booking et Abritel protègent souvent leurs pages contre les robots (pages de défi, 403, contenu rendu en JavaScript). Selon le site, le moment ou l'adresse IP, l'aperçu peut être complet, partiel ou absent. C'est un choix assumé : pas de navigateur headless ni de contournement de protection. L'élément est **toujours créé** et tout reste saisissable à la main. Le prix, les couchages, la note ou la distance ne sont jamais extraits automatiquement (peu fiables, dépendants des dates) : ce sont des critères manuels.
+- **Aperçu côté serveur** : Airbnb, Booking et Abritel protègent leurs pages contre les robots (pages de défi, 403, contenu rendu en JavaScript) ; l'aperçu serveur est donc souvent vide. C'est un choix assumé : pas de navigateur headless ni de contournement de protection. L'élément est **toujours créé** et tout reste saisissable à la main ; l'import par le navigateur (favori ou copier-coller) prend le relais.
+- **Favori d'import et CSP** : un site dont la politique de sécurité (CSP) est stricte peut bloquer le favori — en particulier sous **Firefox**, qui applique la CSP de la page aux bookmarklets — ou interdire l'envoi d'un formulaire vers un autre domaine (`form-action`, dans tous les navigateurs ; le favori affiche alors un message). Dans ces cas, utilisez **le copier-coller**.
+- Si `APP_URL` est en `http://` sur une autre adresse que `localhost`, le navigateur avertit qu'un formulaire est envoyé depuis une page https vers une adresse non sécurisée.
+- **Extraction d'annonces** : heuristiques, à vérifier à chaque import. Le prix dépend des dates et voyageurs saisis sur le site ; seuls les montants en euros sont reconnus ; le texte est tronqué à 30 000 caractères (le haut de la page, où figurent titre, note et premiers tarifs, est conservé) ; l'année des dates est déduite quand elle manque ; la distance au centre n'est jamais extraite. Les motifs suivent la mise en page actuelle des sites et devront évoluer avec elle — les fixtures réelles servent de garde-fou.
+- `POST /import` accepte des envois de n'importe quel site (c'est son rôle) : rien n'est créé sans confirmation, la taille est bornée et 50 imports au plus restent en attente.
 - Les images d'aperçu sont chargées directement depuis le site d'origine (`referrerPolicy="no-referrer"`) ; certaines peuvent être refusées (une icône les remplace) et ce chargement révèle votre adresse IP à ce site.
 - **Services gratuits** : ORS limite le nombre de requêtes (par minute et par jour), à 50 étapes par itinéraire et à une distance maximale par trajet ; Photon public est en « usage raisonnable ». Le cache limite les appels, mais un quota atteint affiche un message et il faut patienter. Carte, géocodage et itinéraire nécessitent une connexion Internet.
 - Avec seulement deux éléments, la normalisation min–max donne mécaniquement 1 au meilleur et 0 à l'autre sur chaque critère numérique : les écarts de score paraissent plus marqués qu'avec trois éléments ou plus.
 - Durées ORS hors pauses et hors trafic.
 - Pas d'authentification ni de multi-utilisateur ; SQLite convient à un usage local.
 - `npm audit` signale des vulnérabilités dans des dépendances de la CLI Prisma (pilote MySQL, non utilisé à l'exécution par l'application).
-- Ce dépôt a été développé et testé dans un environnement sans accès aux services externes : ORS, Photon et OpenFreeMap ont été validés contre leurs formats documentés et un faux service local, pas en conditions réelles.
+- Ce dépôt a été développé et testé dans un environnement sans accès aux services externes : ORS, Photon et OpenFreeMap ont été validés contre leurs formats documentés et un faux service local, pas en conditions réelles. De même, le favori a été testé sur une page d'annonce locale et l'extraction sur des textes copiés depuis Airbnb et Booking, mais pas en direct sur ces sites (leurs balises og / JSON-LD réelles n'ont donc pas été vérifiées).
 
 ## Pistes
 
 Idées hors du périmètre actuel :
 
+- Extension de navigateur (non soumise à la CSP des pages, utilisable sur mobile Firefox) à la place du favori.
+- Prix et devises : conversion automatique des montants non en euros.
+
 - Export du programme jour par jour (PDF, iCal) et partage en lecture seule.
 - Lier une étape d'itinéraire à un logement retenu (et afficher les logements sur la carte).
 - Détails d'une dépense : date, payeur, répartition entre voyageurs, devises et taux de change.
-- Pré-remplir certains critères depuis le JSON-LD quand il est fiable (note, adresse), avec confirmation.
 - Distance au centre calculée automatiquement à partir de l'adresse du logement.
 - Points d'intérêt et pauses le long du trajet, estimation du carburant et des péages.
 - Listes de bagages modèles réutilisables d'un voyage à l'autre.
