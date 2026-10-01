@@ -1,0 +1,84 @@
+// Schéma de données de Traveler Assist.
+// Les montants sont stockés en centimes (Int) pour éviter les erreurs d'arrondi.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum TripStatus {
+  IDEA
+  PLANNING
+  BOOKED
+  DONE
+}
+
+enum TaskCategory {
+  TRANSPORT
+  ACCOMMODATION
+  ADMIN
+  ACTIVITIES
+  PACKING
+  OTHER
+}
+
+enum ExpenseCategory {
+  TRANSPORT
+  ACCOMMODATION
+  FOOD
+  ACTIVITIES
+  ADMIN
+  OTHER
+}
+
+enum ExpenseStatus {
+  ESTIMATED
+  BOOKED
+  PAID
+}
+
+model Trip {
+  id           String       @id @default(cuid())
+  name         String
+  destination  String       @default("")
+  startDate    DateTime?
+  endDate      DateTime?
+  travelers    Int          @default(1)
+  budgetCents  Int?
+  status       TripStatus   @default(IDEA)
+  notes        String       @default("")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  tasks        Task[]
+  expenses     Expense[]
+}
+
+model Task {
+  id        String       @id @default(cuid())
+  tripId    String
+  trip      Trip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  title     String
+  category  TaskCategory @default(OTHER)
+  dueDate   DateTime?
+  done      Boolean      @default(false)
+  createdAt DateTime     @default(now())
+
+  @@index([tripId])
+}
+
+model Expense {
+  id               String          @id @default(cuid())
+  tripId           String
+  trip             Trip            @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  label            String
+  category         ExpenseCategory @default(OTHER)
+  amountCents      Int
+  status           ExpenseStatus   @default(ESTIMATED)
+  createdAt        DateTime        @default(now())
+
+  @@index([tripId])
+}
