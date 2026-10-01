@@ -127,7 +127,7 @@ export function ItemFormDialog({
           <DialogTitle>{item ? "Modifier l'élément" : "Nouvel élément"}</DialogTitle>
           <DialogDescription>Renseignez ce que vous savez, le reste pourra être complété plus tard.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4" noValidate>
           <FormField label="Titre" htmlFor="item-title" error={errors.title}>
             <Input id="item-title" name="title" defaultValue={item?.title} placeholder="Appartement Alfama" autoFocus />
           </FormField>
@@ -135,9 +135,9 @@ export function ItemFormDialog({
             <Input id="item-url" name="url" type="url" defaultValue={item?.url ?? ""} placeholder="https://…" />
           </FormField>
           {criteria.length > 0 && (
-            <fieldset className="grid gap-3 rounded-lg border p-3">
+            <fieldset className="grid grid-cols-1 gap-3 rounded-lg border p-3">
               <legend className="px-1 text-sm font-medium">Critères</legend>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {criteria.map((criterion) => (
                   <FormField
                     key={criterion.id}
@@ -157,7 +157,7 @@ export function ItemFormDialog({
             </fieldset>
           )}
           {item?.url && (
-            <fieldset className="grid gap-3 rounded-lg border p-3">
+            <fieldset className="grid grid-cols-1 gap-3 rounded-lg border p-3">
               <legend className="px-1 text-sm font-medium">Aperçu du lien</legend>
               <FormField label="Description" htmlFor="item-preview-description" error={errors.previewDescription}>
                 <Textarea

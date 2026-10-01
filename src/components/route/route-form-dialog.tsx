@@ -57,7 +57,7 @@ export function RouteFormDialog({
           <DialogTitle>{route ? "Renommer l'itinéraire" : "Nouvel itinéraire"}</DialogTitle>
           <DialogDescription>Un road trip, une randonnée, une boucle à vélo…</DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4" noValidate>
           <FormField label="Nom" htmlFor="route-name" error={errors.name}>
             <Input id="route-name" name="name" defaultValue={route?.name} placeholder="Road trip des Alpes" autoFocus />
           </FormField>

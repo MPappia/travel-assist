@@ -62,7 +62,7 @@ export function BudgetStats({ summary }: { summary: BudgetSummary }) {
         <CardHeader className="px-4">
           <CardDescription>Budget cible</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-2 px-4">
+        <CardContent className="grid grid-cols-1 gap-2 px-4">
           {summary.targetCents === null ? (
             <p className="text-muted-foreground text-sm">Non défini</p>
           ) : (
@@ -104,9 +104,9 @@ export function BudgetByCategory({ summary }: { summary: BudgetSummary }) {
       <CardHeader>
         <CardTitle className="text-base">Par catégorie</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-3">
+      <CardContent className="grid grid-cols-1 gap-3">
         {summary.byCategory.map((c) => (
-          <div key={c.category} className="grid gap-1">
+          <div key={c.category} className="grid grid-cols-1 gap-1">
             <div className="flex justify-between text-sm">
               <span>{EXPENSE_CATEGORY_LABELS[c.category]}</span>
               <span className="tabular-nums">

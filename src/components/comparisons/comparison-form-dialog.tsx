@@ -151,7 +151,7 @@ export function ComparisonFormDialog({
             Définissez les critères et leur poids : le score sur 100 est calculé automatiquement.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="grid grid-cols-1 gap-4" noValidate>
           {!comparison && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-muted-foreground">Modèle :</span>
@@ -162,7 +162,7 @@ export function ComparisonFormDialog({
               ))}
             </div>
           )}
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FormField label="Nom" htmlFor="comparison-name" error={errors.name}>
               <Input
                 id="comparison-name"
@@ -190,7 +190,7 @@ export function ComparisonFormDialog({
             </FormField>
           </div>
 
-          <div className="grid gap-2">
+          <div className="grid grid-cols-1 gap-2">
             <div className="flex items-center justify-between">
               <Label>Critères</Label>
               <Button
@@ -213,9 +213,9 @@ export function ComparisonFormDialog({
                 Aucun critère : ajoutez-en au moins un pour calculer un score.
               </p>
             )}
-            <ul className="grid gap-2">
+            <ul className="grid grid-cols-1 gap-2">
               {criteria.map((c, index) => (
-                <li key={c.key} className="bg-muted/30 grid gap-2 rounded-lg border p-3" data-testid="criterion-editor-row">
+                <li key={c.key} className="bg-muted/30 grid grid-cols-1 gap-2 rounded-lg border p-3" data-testid="criterion-editor-row">
                   <div className="flex gap-2">
                     <Input
                       aria-label={`Nom du critère ${index + 1}`}

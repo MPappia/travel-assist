@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   );
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Mes voyages</h1>
@@ -45,7 +45,7 @@ export default async function DashboardPage() {
           <TripFormDialog trigger={newTripButton} />
         </EmptyState>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {trips.map((trip) => (
             <TripCard
               key={trip.id}

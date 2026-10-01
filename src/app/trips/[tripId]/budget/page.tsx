@@ -9,10 +9,10 @@ export default async function TripBudgetPage({ params }: PageProps<"/trips/[trip
   const summary = summarizeBudget(expenses, trip?.budgetCents ?? null);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <BudgetAlert summary={summary} />
       <BudgetStats summary={summary} />
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <ExpenseList tripId={tripId} expenses={expenses} />
         <BudgetByCategory summary={summary} />
       </div>

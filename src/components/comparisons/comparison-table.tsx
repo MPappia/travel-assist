@@ -99,7 +99,7 @@ export function ComparisonTable({ comparisonId, expenseCategory, criteria, items
   );
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <ComparisonVerdict explanation={view.explanation} columns={view.columns} titles={titles} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -145,7 +145,7 @@ export function ComparisonTable({ comparisonId, expenseCategory, criteria, items
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="grid min-w-0 gap-1.5">
+                      <div className="grid grid-cols-1 min-w-0 gap-1.5">
                         <div className="flex items-center gap-1.5">
                           {col.rank !== null && (
                             <span
@@ -236,7 +236,7 @@ export function ComparisonTable({ comparisonId, expenseCategory, criteria, items
                             : "À compléter"}
                       </span>
                     ) : (
-                      <div className="grid gap-1.5">
+                      <div className="grid grid-cols-1 gap-1.5">
                         <span className="text-2xl font-semibold tabular-nums">{col.score}</span>
                         <Progress
                           value={col.score}

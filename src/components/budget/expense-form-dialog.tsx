@@ -65,7 +65,7 @@ export function ExpenseFormDialog({
           <DialogTitle>{expense ? "Modifier la dépense" : "Nouvelle dépense"}</DialogTitle>
           <DialogDescription>Estimée, réservée ou déjà payée : tout compte dans le prévisionnel.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4" noValidate>
           <FormField label="Libellé" htmlFor="expense-label" error={errors.label}>
             <Input id="expense-label" name="label" defaultValue={expense?.label} placeholder="Vols aller-retour" autoFocus />
           </FormField>

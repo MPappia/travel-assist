@@ -122,9 +122,9 @@ export function RouteEditor({ route }: { route: { id: string; name: string; mode
   }
 
   return (
-    <div className="grid gap-6">
-      <div className="grid gap-4 lg:grid-cols-[minmax(320px,400px)_1fr]">
-        <div className="grid content-start gap-4">
+    <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(320px,400px)_1fr]">
+        <div className="grid grid-cols-1 content-start gap-4">
           <div className="bg-muted inline-grid grid-cols-3 gap-1 rounded-lg p-1" role="radiogroup" aria-label="Mode de déplacement">
             {ROUTE_MODES.map((m) => {
               const Icon = MODE_ICONS[m];
@@ -208,7 +208,7 @@ function RouteSummary({
     ) : null;
   }
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-1 gap-3">
       {error && (
         <div
           role="alert"

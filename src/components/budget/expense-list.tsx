@@ -40,7 +40,7 @@ export function ExpenseList({ tripId, expenses }: { tripId: string; expenses: Ex
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-1 gap-3">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-medium">Dépenses</h2>
         <ExpenseFormDialog tripId={tripId} trigger={addButton} />

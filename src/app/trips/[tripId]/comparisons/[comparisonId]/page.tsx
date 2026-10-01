@@ -12,9 +12,9 @@ export default async function ComparisonPage({ params }: PageProps<"/trips/[trip
   if (!comparison) notFound();
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="grid gap-1">
+        <div className="grid grid-cols-1 gap-1">
           <Link
             href={`/trips/${tripId}/comparisons`}
             className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-1 text-sm"

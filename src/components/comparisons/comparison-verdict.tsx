@@ -22,7 +22,7 @@ export function ComparisonVerdict({
   return (
     <div className="bg-success/5 border-success/30 flex gap-3 rounded-xl border p-4 text-sm" data-testid="comparison-verdict">
       <TrophyIcon className="text-success mt-0.5 size-5 shrink-0" />
-      <div className="grid gap-1">
+      <div className="grid grid-cols-1 gap-1">
         <p>
           <span className="font-semibold">{winnerTitle}</span> arrive en tête avec{" "}
           <span className="font-semibold tabular-nums">{winner.score}/100</span>

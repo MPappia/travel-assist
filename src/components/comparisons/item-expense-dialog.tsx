@@ -59,7 +59,7 @@ export function ItemExpenseDialog({
             La dépense sera rangée dans la catégorie « {EXPENSE_CATEGORY_LABELS[category]} ».
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4" noValidate>
           <FormField label="Libellé" htmlFor="item-expense-label" error={errors.label}>
             <Input id="item-expense-label" name="label" defaultValue={defaultLabel} />
           </FormField>

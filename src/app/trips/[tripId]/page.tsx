@@ -26,9 +26,9 @@ export default async function TripOverviewPage({ params }: PageProps<"/trips/[tr
   const perPerson = trip.travelers > 0 ? Math.round(budget.totalCents / trip.travelers) : 0;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <BudgetAlert summary={budget} />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Tâches</CardTitle>
@@ -43,10 +43,10 @@ export default async function TripOverviewPage({ params }: PageProps<"/trips/[tr
               </Link>
             </CardAction>
           </CardHeader>
-          <CardContent className="grid gap-4">
+          <CardContent className="grid grid-cols-1 gap-4">
             <Progress value={progress.percent} aria-label="Avancement des tâches" />
             {nextTasks.length > 0 ? (
-              <ul className="grid gap-2 text-sm">
+              <ul className="grid grid-cols-1 gap-2 text-sm">
                 {nextTasks.map((task) => {
                   const overdue = isOverdue(task, today);
                   return (
@@ -83,7 +83,7 @@ export default async function TripOverviewPage({ params }: PageProps<"/trips/[tr
               </Link>
             </CardAction>
           </CardHeader>
-          <CardContent className="grid gap-3 text-sm">
+          <CardContent className="grid grid-cols-1 gap-3 text-sm">
             <dl className="grid grid-cols-3 gap-2">
               <div>
                 <dt className="text-muted-foreground text-xs">Prévisionnel</dt>
@@ -130,7 +130,7 @@ export default async function TripOverviewPage({ params }: PageProps<"/trips/[tr
             </CardAction>
           </CardHeader>
           <CardContent>
-            <ul className="grid gap-2 text-sm">
+            <ul className="grid grid-cols-1 gap-2 text-sm">
               {trip.comparisons.map((comparison) => {
                 const selected = comparison.items.find((i) => i.status === "SELECTED");
                 const leader = buildComparisonView(comparison.criteria, comparison.items).columns.find((c) => c.rank === 1);
@@ -171,7 +171,7 @@ export default async function TripOverviewPage({ params }: PageProps<"/trips/[tr
             </CardAction>
           </CardHeader>
           <CardContent>
-            <ul className="grid gap-2 text-sm">
+            <ul className="grid grid-cols-1 gap-2 text-sm">
               {trip.routes.map((route) => (
                 <li key={route.id} className="flex items-center justify-between gap-3">
                   <Link href={`/trips/${tripId}/route?route=${route.id}`} className="truncate hover:underline">

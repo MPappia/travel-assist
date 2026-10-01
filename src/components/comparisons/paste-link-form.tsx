@@ -44,7 +44,7 @@ export function PasteLinkForm({ comparisonId }: { comparisonId: string }) {
 
   return (
     <form
-      className="grid w-full gap-1 sm:w-auto sm:min-w-96"
+      className="grid grid-cols-1 w-full gap-1 sm:w-auto sm:min-w-96"
       onSubmit={(event) => {
         event.preventDefault();
         submit(value);

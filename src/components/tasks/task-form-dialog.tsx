@@ -59,7 +59,7 @@ export function TaskFormDialog({
           <DialogTitle>{task ? "Modifier la tâche" : "Nouvelle tâche"}</DialogTitle>
           <DialogDescription>Une chose à ne pas oublier avant le départ.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4" noValidate>
           <FormField label="Titre" htmlFor="task-title" error={errors.title}>
             <Input id="task-title" name="title" defaultValue={task?.title} placeholder="Renouveler le passeport" autoFocus />
           </FormField>

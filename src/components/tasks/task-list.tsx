@@ -73,7 +73,7 @@ export function TaskList({ tripId, tasks, today }: { tripId: string; tasks: Task
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground text-sm">
           <span className="text-foreground font-medium">
@@ -118,7 +118,7 @@ export function TaskList({ tripId, tasks, today }: { tripId: string; tasks: Task
                 <div className="min-w-0 flex-1">
                   <label
                     htmlFor={`task-${task.id}`}
-                    className={cn("block truncate text-sm", task.done && "text-muted-foreground line-through")}
+                    className={cn("line-clamp-2 block text-sm break-words", task.done && "text-muted-foreground line-through")}
                   >
                     {task.title}
                   </label>

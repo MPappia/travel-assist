@@ -39,7 +39,7 @@ export function LinkPreviewCard({ item }: { item: PreviewFields }) {
   const hasPreview = Boolean(item.previewImage || item.previewDescription);
 
   return (
-    <div className="mt-3 grid gap-2" data-testid="link-preview" data-status={item.previewStatus}>
+    <div className="mt-3 grid grid-cols-1 gap-2" data-testid="link-preview" data-status={item.previewStatus}>
       {image ? (
         // Images hébergées par des domaines arbitraires : <img> natif plutôt que next/image (pas de liste blanche).
         // eslint-disable-next-line @next/next/no-img-element

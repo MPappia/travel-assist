@@ -21,14 +21,14 @@ export default async function TripLayout({ params, children }: LayoutProps<"/tri
   if (!trip) notFound();
 
   return (
-    <div className="grid gap-6">
-      <div className="grid gap-3">
+    <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-3">
         <Link href="/" className="text-muted-foreground hover:text-foreground flex w-fit items-center gap-1 text-sm">
           <ChevronLeftIcon className="size-4" />
           Mes voyages
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="grid gap-2">
+          <div className="grid grid-cols-1 gap-2">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-semibold tracking-tight">{trip.name}</h1>
               <TripStatusBadge status={trip.status} />
@@ -54,7 +54,7 @@ export default async function TripLayout({ params, children }: LayoutProps<"/tri
         </div>
       </div>
       <TripTabs tripId={trip.id} />
-      <div>{children}</div>
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }

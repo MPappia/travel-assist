@@ -65,7 +65,7 @@ export function TripFormDialog({ trip, trigger }: { trip?: TripFormValues; trigg
           <DialogTitle>{isEdit ? "Modifier le voyage" : "Nouveau voyage"}</DialogTitle>
           <DialogDescription>Les informations essentielles, tout reste modifiable plus tard.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4" noValidate>
           <FormField label="Nom du voyage" htmlFor="trip-name" error={errors.name}>
             <Input id="trip-name" name="name" defaultValue={trip?.name} placeholder="Été au Portugal" required autoFocus />
           </FormField>

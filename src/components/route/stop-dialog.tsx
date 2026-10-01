@@ -52,7 +52,7 @@ export function StopDialog({ stop, trigger }: { stop: StopValues; trigger: React
           <DialogTitle>Modifier l&apos;étape</DialogTitle>
           <DialogDescription>{formatCoordinates(stop.lat, stop.lng)}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4" noValidate>
           <FormField label="Nom" htmlFor="stop-name" error={errors.name}>
             <Input id="stop-name" name="name" defaultValue={stop.name} />
           </FormField>

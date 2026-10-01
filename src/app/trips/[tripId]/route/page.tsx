@@ -36,7 +36,7 @@ export default async function TripRoutePage({ params, searchParams }: PageProps<
   const current = routes.find((r) => r.id === routeParam) ?? routes[0];
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav aria-label="Itinéraires" className="flex flex-wrap items-center gap-2">
           {routes.map((route) => (

@@ -32,11 +32,11 @@ export default async function TripComparisonsPage({ params }: PageProps<"/trips/
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <div className="flex justify-end">
         <ComparisonFormDialog tripId={tripId} trigger={createButton} />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {comparisons.map((comparison) => {
           const view = buildComparisonView(comparison.criteria, comparison.items);
           const leader = view.columns.find((c) => c.rank === 1);
@@ -55,7 +55,7 @@ export default async function TripComparisonsPage({ params }: PageProps<"/trips/
                     {comparison.criteria.length} critère{comparison.criteria.length > 1 ? "s" : ""}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-1 text-sm">
+                <CardContent className="grid grid-cols-1 gap-1 text-sm">
                   {leader ? (
                     <p className="flex items-center gap-1.5">
                       <TrophyIcon className="text-success size-4" />

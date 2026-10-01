@@ -54,8 +54,8 @@ export function TripCard({
             </span>
           </div>
         </CardHeader>
-        <CardContent className="mt-auto grid gap-4">
-          <div className="grid gap-1.5">
+        <CardContent className="mt-auto grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-1.5">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Tâches</span>
               <span data-testid="trip-card-tasks">
@@ -69,7 +69,7 @@ export function TripCard({
             </div>
             <Progress value={tasks.percent} aria-label="Avancement des tâches" />
           </div>
-          <div className="grid gap-1.5">
+          <div className="grid grid-cols-1 gap-1.5">
             <div className="flex justify-between gap-2 text-sm">
               <span className="text-muted-foreground">Budget engagé</span>
               <span data-testid="trip-card-budget" className={cn(budget.level === "over" && "text-destructive")}>

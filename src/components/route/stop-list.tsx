@@ -67,7 +67,7 @@ export function StopList({
       }}
     >
       <SortableContext items={stops.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-        <ol className="grid" data-testid="stop-list">
+        <ol className="grid grid-cols-1" data-testid="stop-list">
           {stops.map((stop, index) => (
             <SortableStop
               key={stop.id}

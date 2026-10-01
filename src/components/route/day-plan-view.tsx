@@ -20,9 +20,9 @@ export function DayPlanView<S extends PlanStop>({ plan }: { plan: DayPlan<S> }) 
       </CardHeader>
       {plan.days.length > 0 && (
         <CardContent>
-          <ol className="grid gap-3" data-testid="day-plan">
+          <ol className="grid grid-cols-1 gap-3" data-testid="day-plan">
             {plan.days.map((day, dayIndex) => (
-              <li key={day.date} className="grid gap-1.5 border-l-2 pl-4" data-testid="day">
+              <li key={day.date} className="grid grid-cols-1 gap-1.5 border-l-2 pl-4" data-testid="day">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="text-sm font-medium first-letter:uppercase">
                     Jour {dayIndex + 1} · {formatLongDate(new Date(`${day.date}T00:00:00.000Z`))}
