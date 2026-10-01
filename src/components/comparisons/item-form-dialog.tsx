@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2Icon } from "lucide-react";
 
+import { PasteContentForm } from "@/components/comparisons/paste-content-form";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useFormAction } from "@/hooks/use-form-action";
 import { toInputValue, type StoredCriterionValue } from "@/lib/domain/criteria-values";
@@ -113,6 +115,70 @@ export function ItemFormDialog({
     { successMessage: item ? "Élément mis à jour" : "Élément ajouté", onSuccess: () => setOpen(false) },
   );
 
+  const manualForm = (
+    <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4" noValidate>
+      <FormField label="Titre" htmlFor="item-title" error={errors.title}>
+        <Input id="item-title" name="title" defaultValue={item?.title} placeholder="Appartement Alfama" autoFocus />
+      </FormField>
+      <FormField label="Lien (facultatif)" htmlFor="item-url" error={errors.url}>
+        <Input id="item-url" name="url" type="url" defaultValue={item?.url ?? ""} placeholder="https://…" />
+      </FormField>
+      {criteria.length > 0 && (
+        <fieldset className="grid grid-cols-1 gap-3 rounded-lg border p-3">
+          <legend className="px-1 text-sm font-medium">Critères</legend>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {criteria.map((criterion) => (
+              <FormField
+                key={criterion.id}
+                label={criterion.unit ? `${criterion.name} (${criterion.unit})` : criterion.name}
+                htmlFor={`item-value-${criterion.id}`}
+                error={errors[`value:${criterion.id}`]}
+                hint={criterion.type === "TEXT" ? "Non noté" : CRITERION_DIRECTION_LABELS[criterion.direction]}
+              >
+                <CriterionValueInput
+                  criterion={criterion}
+                  defaultValue={toInputValue(criterion.type, valueMap[criterion.id])}
+                  invalid={Boolean(errors[`value:${criterion.id}`])}
+                />
+              </FormField>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      {item?.url && (
+        <fieldset className="grid grid-cols-1 gap-3 rounded-lg border p-3">
+          <legend className="px-1 text-sm font-medium">Aperçu du lien</legend>
+          <FormField label="Description" htmlFor="item-preview-description" error={errors.previewDescription}>
+            <Textarea
+              id="item-preview-description"
+              name="previewDescription"
+              defaultValue={item.previewDescription ?? ""}
+              rows={2}
+            />
+          </FormField>
+          <FormField label="Image (adresse)" htmlFor="item-preview-image" error={errors.previewImage}>
+            <Input
+              id="item-preview-image"
+              name="previewImage"
+              type="url"
+              defaultValue={item.previewImage ?? ""}
+              placeholder="https://…"
+            />
+          </FormField>
+        </fieldset>
+      )}
+      <FormField label="Notes" htmlFor="item-notes" error={errors.notes}>
+        <Textarea id="item-notes" name="notes" defaultValue={item?.notes} rows={2} />
+      </FormField>
+      <DialogFooter>
+        <Button type="submit" disabled={pending}>
+          {pending && <Loader2Icon className="animate-spin" />}
+          {item ? "Enregistrer" : "Ajouter"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+
   return (
     <Dialog
       open={open}
@@ -127,67 +193,20 @@ export function ItemFormDialog({
           <DialogTitle>{item ? "Modifier l'élément" : "Nouvel élément"}</DialogTitle>
           <DialogDescription>Renseignez ce que vous savez, le reste pourra être complété plus tard.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4" noValidate>
-          <FormField label="Titre" htmlFor="item-title" error={errors.title}>
-            <Input id="item-title" name="title" defaultValue={item?.title} placeholder="Appartement Alfama" autoFocus />
-          </FormField>
-          <FormField label="Lien (facultatif)" htmlFor="item-url" error={errors.url}>
-            <Input id="item-url" name="url" type="url" defaultValue={item?.url ?? ""} placeholder="https://…" />
-          </FormField>
-          {criteria.length > 0 && (
-            <fieldset className="grid grid-cols-1 gap-3 rounded-lg border p-3">
-              <legend className="px-1 text-sm font-medium">Critères</legend>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {criteria.map((criterion) => (
-                  <FormField
-                    key={criterion.id}
-                    label={criterion.unit ? `${criterion.name} (${criterion.unit})` : criterion.name}
-                    htmlFor={`item-value-${criterion.id}`}
-                    error={errors[`value:${criterion.id}`]}
-                    hint={criterion.type === "TEXT" ? "Non noté" : CRITERION_DIRECTION_LABELS[criterion.direction]}
-                  >
-                    <CriterionValueInput
-                      criterion={criterion}
-                      defaultValue={toInputValue(criterion.type, valueMap[criterion.id])}
-                      invalid={Boolean(errors[`value:${criterion.id}`])}
-                    />
-                  </FormField>
-                ))}
-              </div>
-            </fieldset>
-          )}
-          {item?.url && (
-            <fieldset className="grid grid-cols-1 gap-3 rounded-lg border p-3">
-              <legend className="px-1 text-sm font-medium">Aperçu du lien</legend>
-              <FormField label="Description" htmlFor="item-preview-description" error={errors.previewDescription}>
-                <Textarea
-                  id="item-preview-description"
-                  name="previewDescription"
-                  defaultValue={item.previewDescription ?? ""}
-                  rows={2}
-                />
-              </FormField>
-              <FormField label="Image (adresse)" htmlFor="item-preview-image" error={errors.previewImage}>
-                <Input
-                  id="item-preview-image"
-                  name="previewImage"
-                  type="url"
-                  defaultValue={item.previewImage ?? ""}
-                  placeholder="https://…"
-                />
-              </FormField>
-            </fieldset>
-          )}
-          <FormField label="Notes" htmlFor="item-notes" error={errors.notes}>
-            <Textarea id="item-notes" name="notes" defaultValue={item?.notes} rows={2} />
-          </FormField>
-          <DialogFooter>
-            <Button type="submit" disabled={pending}>
-              {pending && <Loader2Icon className="animate-spin" />}
-              {item ? "Enregistrer" : "Ajouter"}
-            </Button>
-          </DialogFooter>
-        </form>
+        {item ? (
+          manualForm
+        ) : (
+          <Tabs defaultValue="manual">
+            <TabsList className="w-full">
+              <TabsTrigger value="manual">Saisie manuelle</TabsTrigger>
+              <TabsTrigger value="paste">Coller le contenu de la page</TabsTrigger>
+            </TabsList>
+            <TabsContent value="manual">{manualForm}</TabsContent>
+            <TabsContent value="paste">
+              <PasteContentForm comparisonId={comparisonId} />
+            </TabsContent>
+          </Tabs>
+        )}
       </DialogContent>
     </Dialog>
   );
