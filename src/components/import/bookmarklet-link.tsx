@@ -10,7 +10,17 @@ import { Button } from "@/components/ui/button";
  * Lien à glisser dans la barre de favoris.
  * React 19 refuse les URL `javascript:` dans `href` : l'attribut est posé directement sur le DOM.
  */
-export function BookmarkletLink({ href }: { href: string }) {
+export function BookmarkletLink({
+  href,
+  label = "Envoyer à Traveler Assist",
+  variant = "primary",
+  testId = "bookmarklet-link",
+}: {
+  href: string;
+  label?: string;
+  variant?: "primary" | "outline";
+  testId?: string;
+}) {
   const ref = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
     ref.current?.setAttribute("href", href);
@@ -20,15 +30,19 @@ export function BookmarkletLink({ href }: { href: string }) {
     <a
       ref={ref}
       draggable
-      data-testid="bookmarklet-link"
+      data-testid={testId}
       onClick={(event) => {
         event.preventDefault();
         toast.info("Glissez ce bouton dans votre barre de favoris, puis utilisez-le sur une annonce.");
       }}
-      className="bg-primary text-primary-foreground inline-flex cursor-grab items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm active:cursor-grabbing"
+      className={
+        variant === "primary"
+          ? "bg-primary text-primary-foreground inline-flex cursor-grab items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-sm active:cursor-grabbing"
+          : "text-foreground inline-flex cursor-grab items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium active:cursor-grabbing"
+      }
     >
       <BookmarkPlusIcon className="size-4" />
-      Envoyer à Traveler Assist
+      {label}
     </a>
   );
 }

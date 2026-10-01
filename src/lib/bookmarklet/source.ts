@@ -13,7 +13,16 @@ export const MAX_TEXT_LENGTH = 30_000;
 /** Nombre maximal d'images envoyées. */
 export const MAX_IMAGES = 3;
 
-export function sendToTravelerAssist(appUrl: string, doc: Document = document): HTMLFormElement {
+export interface BookmarkletOptions {
+  /** Mode diagnostic : affiche la taille de chaque champ au lieu d'envoyer. */
+  debug?: boolean;
+}
+
+export function sendToTravelerAssist(
+  appUrl: string,
+  options: BookmarkletOptions = {},
+  doc: Document = document,
+): HTMLFormElement | null {
   const MAX_TEXT = 30000; // = MAX_TEXT_LENGTH (dupliqué : la fonction doit rester autonome)
   const MAX_IMG = 3; // = MAX_IMAGES
 
@@ -91,6 +100,24 @@ export function sendToTravelerAssist(appUrl: string, doc: Document = document): 
     images: JSON.stringify(images),
     text,
   };
+  if (options.debug) {
+    // Tailles telles que le serveur les recevra : le navigateur convertit les sauts de ligne des
+    // <textarea> en \r\n à l'envoi, puis le formulaire est encodé (application/x-www-form-urlencoded).
+    const lines = Object.keys(fields).map((name) => {
+      const value = fields[name];
+      const sent = value.replace(/\r?\n/g, "\r\n");
+      const encoded = encodeURIComponent(sent).length;
+      return `${name} : ${value.length} car. → ${sent.length} envoyés (${Math.round(encoded / 1024)} Ko encodés)`;
+    });
+    const total = Object.keys(fields).reduce(
+      (sum, name) => sum + name.length + 2 + encodeURIComponent(fields[name].replace(/\r?\n/g, "\r\n")).length,
+      0,
+    );
+    const report = `Traveler Assist — diagnostic (rien n'a été envoyé)\n\n${lines.join("\n")}\n\nTotal : ${Math.round(total / 1024)} Ko`;
+    if (doc.defaultView) doc.defaultView.alert(report);
+    return null;
+  }
+
   const form = doc.createElement("form");
   form.method = "POST";
   form.action = appUrl.replace(/\/+$/, "") + "/import";

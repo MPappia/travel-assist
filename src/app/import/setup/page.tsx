@@ -9,12 +9,14 @@ export const metadata: Metadata = { title: "Importer une annonce" };
 export const dynamic = "force-dynamic";
 
 const ERRORS: Record<string, string> = {
-  invalide: "Les données reçues de la page n'ont pas pu être lues (trop volumineuses ou incomplètes). Utilisez le copier-coller.",
+  "trop-volumineux": "La page envoyée est trop volumineuse. Utilisez le copier-coller du contenu de l'annonce.",
+  illisible: "Les données envoyées par le favori n'ont pas pu être lues. Réessayez, ou utilisez le copier-coller.",
+  invalide: "Les données envoyées par le favori sont invalides. Réessayez, ou utilisez le copier-coller ; le favori de diagnostic (ci-dessous) affiche ce qui est envoyé.",
 };
 
 export default async function ImportSetupPage({ searchParams }: PageProps<"/import/setup">) {
   const { erreur } = await searchParams;
-  const bookmarklet = await buildBookmarklet();
+  const [bookmarklet, diagnostic] = await Promise.all([buildBookmarklet(), buildBookmarklet(undefined, { debug: true })]);
   const error = typeof erreur === "string" ? (ERRORS[erreur] ?? ERRORS.invalide) : null;
 
   return (
@@ -61,6 +63,16 @@ export default async function ImportSetupPage({ searchParams }: PageProps<"/impo
                 rows={4}
                 className="bg-muted w-full rounded-md border p-2 font-mono text-xs break-all"
               />
+              <div className="grid gap-2 border-t pt-3">
+                <p className="text-foreground font-medium">Favori de diagnostic</p>
+                <p>
+                  En cas d&apos;échec, installez aussi ce favori : sur l&apos;annonce, il affiche la taille de chaque
+                  information collectée au lieu de l&apos;envoyer.
+                </p>
+                <div>
+                  <BookmarkletLink href={diagnostic.href} label="Diagnostic Traveler Assist" variant="outline" testId="bookmarklet-debug-link" />
+                </div>
+              </div>
               <p className="text-xs">
                 Les données sont envoyées à <code>{bookmarklet.appUrl}</code> (variable <code>APP_URL</code>). Si vous
                 changez cette adresse, réinstallez le favori.

@@ -71,7 +71,7 @@ function expectPayload(sub: Submission) {
 describe("bookmarklet (code source)", () => {
   it("collecte la page et l'envoie par un formulaire POST, retiré ensuite du DOM", () => {
     const { dom, submissions } = setup();
-    sendToTravelerAssist(APP_URL, dom.window.document);
+    sendToTravelerAssist(APP_URL, {}, dom.window.document);
     expect(submissions).toHaveLength(1);
     expectPayload(submissions[0]);
     expect(dom.window.document.querySelector("form")).toBeNull();
@@ -80,7 +80,7 @@ describe("bookmarklet (code source)", () => {
   it("tronque le texte à 30 000 caractères et se rabat sur l'URL de la page", () => {
     const long = "a".repeat(40_000);
     const { dom, submissions } = setup(`<html><head><title>T</title></head><body><p>${long}</p></body></html>`);
-    sendToTravelerAssist(`${APP_URL}/`, dom.window.document);
+    sendToTravelerAssist(`${APP_URL}/`, {}, dom.window.document);
     const { fields, action } = submissions[0];
     expect(action).toBe("http://localhost:3000/import");
     expect(fields.text).toHaveLength(30_000);
@@ -93,7 +93,7 @@ describe("bookmarklet (code source)", () => {
     const { dom } = setup();
     const alerts: string[] = [];
     dom.window.alert = (message?: string) => void alerts.push(String(message));
-    sendToTravelerAssist(APP_URL, dom.window.document);
+    sendToTravelerAssist(APP_URL, {}, dom.window.document);
     const event = new dom.window.Event("securitypolicyviolation") as Event & { violatedDirective: string };
     event.violatedDirective = "form-action";
     dom.window.document.dispatchEvent(event);
@@ -123,5 +123,24 @@ describe("bookmarklet généré", () => {
     const { dom, submissions } = setup();
     dom.window.eval(bookmarklet.code);
     expect(submissions[0].action).toBe("https://voyages.example.org/app/import");
+  });
+});
+
+describe("favori de diagnostic", () => {
+  it("affiche la taille de chaque champ, telle qu'envoyée, sans rien soumettre", async () => {
+    const { dom, submissions } = setup();
+    const alerts: string[] = [];
+    dom.window.alert = (message?: string) => void alerts.push(String(message));
+    const bookmarklet = await buildBookmarklet(APP_URL, { debug: true });
+    expect(dom.window.eval(bookmarklet.code)).toBeUndefined();
+    expect(submissions).toHaveLength(0);
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toContain("rien n'a été envoyé");
+    // Les sauts de ligne deviennent \r\n à l'envoi : la taille envoyée est plus grande que le texte.
+    const textLine = alerts[0].split("\n").find((l) => l.startsWith("text : "))!;
+    const [, chars, sent] = textLine.match(/text : (\d+) car\. → (\d+) envoyés/)!;
+    expect(Number(sent)).toBeGreaterThan(Number(chars));
+    expect(alerts[0]).toMatch(/jsonld : \d+ car\./);
+    expect(alerts[0]).toMatch(/Total : \d+ Ko/);
   });
 });
