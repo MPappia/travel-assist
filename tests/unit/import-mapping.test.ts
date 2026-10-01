@@ -94,6 +94,7 @@ describe("validation des données reçues", () => {
       jsonLd: ['{"@type":"Hotel"}'],
       images: ["https://cf.bstatic.com/a.jpg"],
       text: "Texte",
+      warnings: [],
     });
   });
 

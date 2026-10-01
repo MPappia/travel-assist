@@ -4,6 +4,9 @@ import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 
 import { buildBookmarklet } from "@/lib/bookmarklet/generate";
+import { IMPORT_LIMITS } from "@/lib/bookmarklet/limits";
+import { pruneJsonLd, reduceListingText } from "@/lib/bookmarklet/shared";
+import { DEFAULT_RATES_HEADERS, SITE_CONFIGS } from "@/lib/bookmarklet/sites";
 import { sendToTravelerAssist } from "@/lib/bookmarklet/source";
 
 const html = readFileSync("tests/fixtures/listings/page-with-metadata.synthetic.html", "utf8");
@@ -36,6 +39,16 @@ function setup(markup = html) {
   return { dom, submissions };
 }
 
+/** Appelle le code source du favori avec la même configuration que le favori généré. */
+function runBookmarklet(doc: Document, appUrl = APP_URL, debug = false) {
+  return sendToTravelerAssist(
+    appUrl,
+    { limits: IMPORT_LIMITS, sites: SITE_CONFIGS, defaultRatesHeaders: DEFAULT_RATES_HEADERS, debug },
+    doc,
+    { reduceListingText, pruneJsonLd },
+  );
+}
+
 function expectPayload(sub: Submission) {
   expect(sub.action).toBe("http://localhost:3000/import");
   expect(sub.method).toBe("post");
@@ -43,7 +56,7 @@ function expectPayload(sub: Submission) {
   expect(sub.attachedWhenSubmitted).toBe(true);
 
   const { fields } = sub;
-  expect(fields.v).toBe("1");
+  expect(fields.v).toBe("2");
   expect(fields.url).toBe("https://www.abritel.fr/location-vacances/p1234567");
   expect(fields.title).toBe("Maison avec piscine à Saint-Jean-de-Luz - Abritel");
   expect(JSON.parse(fields.meta)).toEqual({
@@ -54,9 +67,11 @@ function expectPayload(sub: Submission) {
     "twitter:card": "summary_large_image",
     "twitter:image": "https://images.example.com/maison-2.jpg",
   });
+  // Seul le bloc utile est gardé (le fil d'Ariane est écarté)
   const jsonLd = JSON.parse(fields.jsonld) as string[];
-  expect(jsonLd).toHaveLength(2);
+  expect(jsonLd).toHaveLength(1);
   expect(JSON.parse(jsonLd[0])["@type"]).toBe("VacationRental");
+  expect(JSON.parse(fields.truncated)).toEqual([expect.stringMatching(/^JSON-LD : 2 blocs → 1/)]);
   // og:image, twitter:image (déjà vue dans la page), puis la plus grande image http(s) restante ; ni logo ni data:
   expect(JSON.parse(fields.images)).toEqual([
     "https://images.example.com/maison-1.jpg",
@@ -71,7 +86,7 @@ function expectPayload(sub: Submission) {
 describe("bookmarklet (code source)", () => {
   it("collecte la page et l'envoie par un formulaire POST, retiré ensuite du DOM", () => {
     const { dom, submissions } = setup();
-    sendToTravelerAssist(APP_URL, {}, dom.window.document);
+    runBookmarklet(dom.window.document);
     expect(submissions).toHaveLength(1);
     expectPayload(submissions[0]);
     expect(dom.window.document.querySelector("form")).toBeNull();
@@ -80,20 +95,21 @@ describe("bookmarklet (code source)", () => {
   it("tronque le texte à 30 000 caractères et se rabat sur l'URL de la page", () => {
     const long = "a".repeat(40_000);
     const { dom, submissions } = setup(`<html><head><title>T</title></head><body><p>${long}</p></body></html>`);
-    sendToTravelerAssist(`${APP_URL}/`, {}, dom.window.document);
+    runBookmarklet(dom.window.document, `${APP_URL}/`);
     const { fields, action } = submissions[0];
     expect(action).toBe("http://localhost:3000/import");
     expect(fields.text).toHaveLength(30_000);
     expect(fields.url).toBe(PAGE_URL);
     expect(JSON.parse(fields.images)).toEqual([]);
     expect(JSON.parse(fields.meta)).toEqual({});
+    expect(JSON.parse(fields.truncated)[0]).toMatch(/^Texte : 40 000 → 30 000 caractères \(début de page seulement/);
   });
 
   it("prévient l'utilisateur si la CSP du site bloque l'envoi", () => {
     const { dom } = setup();
     const alerts: string[] = [];
     dom.window.alert = (message?: string) => void alerts.push(String(message));
-    sendToTravelerAssist(APP_URL, {}, dom.window.document);
+    runBookmarklet(dom.window.document);
     const event = new dom.window.Event("securitypolicyviolation") as Event & { violatedDirective: string };
     event.violatedDirective = "form-action";
     dom.window.document.dispatchEvent(event);
@@ -107,7 +123,8 @@ describe("bookmarklet généré", () => {
     expect(bookmarklet.href.startsWith("javascript:")).toBe(true);
     expect(bookmarklet.href).not.toMatch(/[\s"<>]/);
     expect(bookmarklet.code).not.toContain("⚠️"); // commentaires retirés
-    expect(bookmarklet.code.length).toBeLessThan(sendToTravelerAssist.toString().length);
+    const sources = [sendToTravelerAssist, reduceListingText, pruneJsonLd].reduce((n, f) => n + f.toString().length, 0);
+    expect(bookmarklet.code.length).toBeLessThan(sources);
 
     const { dom, submissions } = setup();
     // Le navigateur décode l'URL javascript: avant de l'exécuter dans la page.

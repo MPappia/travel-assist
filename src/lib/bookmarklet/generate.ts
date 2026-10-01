@@ -2,7 +2,10 @@ import "server-only";
 
 import { transform } from "esbuild";
 
-import { sendToTravelerAssist, type BookmarkletOptions } from "@/lib/bookmarklet/source";
+import { IMPORT_LIMITS } from "@/lib/bookmarklet/limits";
+import { pruneJsonLd, reduceListingText } from "@/lib/bookmarklet/shared";
+import { DEFAULT_RATES_HEADERS, SITE_CONFIGS } from "@/lib/bookmarklet/sites";
+import { sendToTravelerAssist, type BookmarkletConfig, type BookmarkletOptions } from "@/lib/bookmarklet/source";
 
 export const DEFAULT_APP_URL = "http://localhost:3000";
 
@@ -35,7 +38,15 @@ export function buildBookmarklet(appUrl: string = getAppUrl(), options: Bookmark
   let pending = cache.get(key);
   if (!pending) {
     pending = (async () => {
-      const source = `(${sendToTravelerAssist.toString()})(${JSON.stringify(appUrl)}, ${JSON.stringify(options)});`;
+      const config: BookmarkletConfig = {
+        ...options,
+        limits: IMPORT_LIMITS,
+        sites: SITE_CONFIGS,
+        defaultRatesHeaders: DEFAULT_RATES_HEADERS,
+      };
+      // Limites, sites et fonctions de réduction partagés avec le serveur sont injectés ici.
+      const helpers = `{reduceListingText: ${reduceListingText.toString()}, pruneJsonLd: ${pruneJsonLd.toString()}}`;
+      const source = `(${sendToTravelerAssist.toString()})(${JSON.stringify(appUrl)}, ${JSON.stringify(config)}, document, ${helpers});`;
       const { code } = await transform(source, { minify: true, loader: "js", target: "es2018", charset: "utf8" });
       // Une URL javascript: dont le script a une valeur de complétion non indéfinie remplace la page
       // par cette valeur : on termine donc explicitement par `void 0` (esbuild retirerait un `void` initial).

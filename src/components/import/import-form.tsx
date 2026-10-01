@@ -61,6 +61,7 @@ export function ImportForm({
   defaultTripId,
   defaultComparisonId,
   defaultNotes,
+  warnings,
 }: {
   pendingId: string;
   url: string | null;
@@ -69,6 +70,8 @@ export function ImportForm({
   defaultTripId: string;
   defaultComparisonId: string;
   defaultNotes: string;
+  /** Réductions appliquées aux données de la page (favori ou serveur). */
+  warnings: string[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -190,6 +193,16 @@ export function ImportForm({
             )}
             <LlmStatus status={extraction.llm} />
           </CardDescription>
+          {warnings.length > 0 && (
+            <details className="text-muted-foreground text-xs" data-testid="import-warnings">
+              <summary className="cursor-pointer">Page volumineuse : données réduites avant analyse</summary>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                {warnings.map((w) => (
+                  <li key={w}>{w}</li>
+                ))}
+              </ul>
+            </details>
+          )}
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4">
           <FormField {...fieldProps("title")}>

@@ -42,13 +42,14 @@ const metaSchema = z
   );
 
 export const bookmarkletPayloadSchema = z.object({
-  v: z.literal("1").optional(),
+  v: z.enum(["1", "2"]).optional(),
   url: httpUrl.optional(),
   title: z.string().max(500).optional(),
   meta: jsonField(250_000, metaSchema).optional(),
   jsonld: jsonField(1_000_000, z.array(z.string().max(100_000)).max(10)).optional(),
   images: jsonField(10_000, z.array(httpUrl).max(3)).optional(),
   text: z.string().max(MAX_TEXT_LENGTH).optional(),
+  truncated: jsonField(20_000, z.array(z.string().max(300)).max(20)).optional(),
 });
 
 export function payloadToSource(payload: z.output<typeof bookmarkletPayloadSchema>): ListingSource {
@@ -59,6 +60,7 @@ export function payloadToSource(payload: z.output<typeof bookmarkletPayloadSchem
     jsonLd: payload.jsonld ?? [],
     images: payload.images ?? [],
     text: payload.text ?? "",
+    warnings: payload.truncated ?? [],
   };
 }
 

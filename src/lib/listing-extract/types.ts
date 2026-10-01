@@ -65,6 +65,8 @@ export interface ListingSource {
   jsonLd?: string[];
   images?: string[];
   text?: string | null;
+  /** Réductions appliquées aux données (par le favori ou le serveur), affichées sur la page d'import. */
+  warnings?: string[];
 }
 
 export type LlmStatus = "disabled" | "skipped" | "ok" | "failed";

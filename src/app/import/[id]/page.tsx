@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NEW_COMPARISON } from "@/lib/listing-extract/criteria-mapping";
 import { buildImportNotes } from "@/lib/listing-extract/notes";
+import type { ListingSource } from "@/lib/listing-extract/types";
 import { getImportExtraction, getPendingImport } from "@/server/pending-imports";
 import { listImportTargets } from "@/server/queries";
 
@@ -77,6 +78,7 @@ async function ImportReview({
       defaultTripId={defaultTrip?.id ?? ""}
       defaultComparisonId={defaultComparison}
       defaultNotes={buildImportNotes(extraction)}
+      warnings={(JSON.parse(pending.payload) as ListingSource).warnings ?? []}
     />
   );
 }
