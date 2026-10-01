@@ -1,10 +1,15 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeftIcon } from "lucide-react";
 
 import { ComparisonActions } from "@/components/comparisons/comparison-actions";
 import { ComparisonTable } from "@/components/comparisons/comparison-table";
+import { FlightSearchPanel } from "@/components/comparisons/flight-search-panel";
+import { db } from "@/lib/db";
+import { toDateKey } from "@/lib/format";
 import { getComparison } from "@/server/queries";
+import { getSerpUsage, isSerpApiEnabled } from "@/server/serpapi";
 
 export default async function ComparisonPage({ params }: PageProps<"/trips/[tripId]/comparisons/[comparisonId]">) {
   const { tripId, comparisonId } = await params;
@@ -26,6 +31,12 @@ export default async function ComparisonPage({ params }: PageProps<"/trips/[trip
         </div>
         <ComparisonActions tripId={tripId} comparison={comparison} />
       </div>
+      {/* Recherche SerpApi : uniquement pour un comparatif « Vols » et si la clé est configurée. */}
+      {comparison.kind === "FLIGHTS" && isSerpApiEnabled() && (
+        <Suspense fallback={null}>
+          <FlightSearch tripId={tripId} comparisonId={comparison.id} />
+        </Suspense>
+      )}
       <ComparisonTable
         comparisonId={comparison.id}
         kind={comparison.kind}
@@ -34,5 +45,23 @@ export default async function ComparisonPage({ params }: PageProps<"/trips/[trip
         items={comparison.items}
       />
     </div>
+  );
+}
+
+async function FlightSearch({ tripId, comparisonId }: { tripId: string; comparisonId: string }) {
+  const [trip, usage] = await Promise.all([
+    db.trip.findUnique({ where: { id: tripId }, select: { startDate: true, endDate: true, travelers: true } }),
+    getSerpUsage(),
+  ]);
+  return (
+    <FlightSearchPanel
+      comparisonId={comparisonId}
+      defaults={{
+        outboundDate: toDateKey(trip?.startDate),
+        returnDate: toDateKey(trip?.endDate),
+        adults: Math.min(9, Math.max(1, trip?.travelers ?? 1)),
+      }}
+      initialUsage={usage}
+    />
   );
 }

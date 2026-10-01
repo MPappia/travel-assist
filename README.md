@@ -45,8 +45,10 @@ Production locale : `npm run build && npm start`.
 | `APP_URL` | non | Adresse de l'application injectée dans le favori d'import (défaut : `http://localhost:3000`). À changer si l'app tourne sur un autre port ou une autre machine, puis réinstaller le favori. |
 | `LLM_BASE_URL`, `LLM_MODEL` | non | Active l'extraction d'annonces assistée par LLM (API compatible OpenAI) — voir plus bas. |
 | `LLM_API_KEY` | non | Clé du service LLM, si nécessaire (envoyée en `Authorization: Bearer`). |
+| `SERPAPI_KEY` | non | Active la recherche de vols Google Flights via [SerpApi](https://serpapi.com) dans les comparatifs « Vols » — voir plus bas. Sans clé, rien n'apparaît. |
+| `SERPAPI_BASE_URL` | non | URL de l'API SerpApi (défaut : `https://serpapi.com`). Utilisé par les tests e2e. |
 
-Aucune clé n'est exposée au navigateur : pas de variable `NEXT_PUBLIC_*`, les appels ORS, Photon et l'extraction des liens passent par le serveur.
+Aucune clé n'est exposée au navigateur : pas de variable `NEXT_PUBLIC_*`, les appels ORS, Photon, SerpApi et l'extraction des liens passent par le serveur.
 
 ## Importer une annonce depuis le navigateur
 
@@ -93,6 +95,16 @@ L'extracteur « vol » est choisi par domaine (`google.*/travel/flights`, `skysc
 Comme pour les logements : étage déterministe d'abord, LLM facultatif pour les seuls champs « critères » restés vides (pas pour les segments), provenance affichée sous chaque champ, rien n'est créé avant validation. La page de vérification montre les trajets trouvés, laisse corriger prix, passagers, durées (« 14 h 05 »), escales (total aller + retour), bagage, compagnies et horaires, propose le comparatif « Vols » du voyage (ou sa création) et pré-remplit les notes avec le détail des segments. La **date de relevé du prix** est celle de l'envoi ; les segments sont enregistrés avec l'élément et affichés sous son titre.
 
 Les fixtures de vols sont pour l'instant **synthétiques** (`google-flights-fr`, `skyscanner-fr`, `flight-confirmation-en` dans `tests/fixtures/listings/`) : les sélecteurs et motifs Google Flights / Skyscanner sont à vérifier sur de vraies pages.
+
+### Recherche de vols via SerpApi (facultative)
+
+Avec `SERPAPI_KEY` dans `.env`, un comparatif « Vols » affiche **Rechercher des vols** : origine et destination (codes IATA, ex. `CDG`, `NRT`), date aller, date retour facultative, passagers. Le serveur interroge l'[API Google Flights de SerpApi](https://serpapi.com/google-flights-api) (`engine=google_flights`, prix en euros) — jamais Google Flights directement — et liste les vols, chacun avec **« Ajouter au comparatif »**.
+
+- **Aller-retour : retour à la demande.** La première recherche renvoie les allers (prix « aller-retour dès ») ; « Choisir le retour » lance une seconde recherche (avec le `departure_token` de l'aller), dont les options portent le **prix total aller-retour**. Ajouter un aller-retour consomme donc **2 recherches**, un aller simple 1.
+- **Cache de 6 h** par jeu de paramètres (en base) : relancer la même recherche n'en consomme pas ; l'élément ajouté est relu dans ce cache côté serveur, avec la **date de relevé** de la recherche, le lien Google Flights, les segments et les critères pré-remplis (prix, durées, escales, compagnies, horaires ; le bagage en soute n'est pas fourni par l'API).
+- **Compteur du mois** : lu sur l'[API Account](https://serpapi.com/account-api) de SerpApi (gratuite, elle ne consomme pas de recherche ; seuls les compteurs sont conservés, jamais la clé ni l'e-mail qu'elle renvoie). Si elle ne répond pas, l'application affiche son propre compteur des recherches lancées ce mois-ci. Quota atteint (HTTP 429 ou compte à zéro) : message explicite, les résultats en cache restent utilisables.
+- **Le quota gratuit de SerpApi est partagé entre tous ses moteurs** (Google Search, Maps, Flights…) et entre toutes les applications qui utilisent la même clé : le compteur affiché est celui du compte, pas seulement de Traveler Assist.
+- Prix : le total pour tous les passagers, comme l'affiche Google Flights ; durées et horaires en heure locale des aéroports.
 
 ### Règles d'extraction
 
@@ -158,8 +170,9 @@ src/components/…        composants métier (trips, tasks, budget, comparisons,
 src/lib/domain/         logique métier pure et testée (budget, tâches, scoring, ORS, Photon, jour par jour…)
 src/lib/link-preview/   extraction Open Graph / JSON-LD (pure)
 src/lib/bookmarklet/    code du favori d'import (source.ts) et génération minifiée
-src/lib/listing-extract/ extraction d'annonces (pure) : og, JSON-LD, motifs FR/EN, LLM, critères
-src/server/             accès base, server actions, services externes (aperçu, géocodage, itinéraire, cache)
+src/lib/listing-extract/ extraction d'annonces et de vols (pure) : og, JSON-LD, motifs FR/EN, LLM, critères
+src/lib/serpapi/        recherche Google Flights via SerpApi : paramètres, lecture des réponses (pure)
+src/server/             accès base, server actions, services externes (aperçu, géocodage, itinéraire, SerpApi, cache)
 tests/unit, tests/e2e   Vitest et Playwright
 ```
 
@@ -216,6 +229,7 @@ Aucune bibliothèque de scraping, de parsing HTML ou de navigateur headless ; au
 - **Favori d'import et CSP** : un site dont la politique de sécurité (CSP) est stricte peut bloquer le favori — en particulier sous **Firefox**, qui applique la CSP de la page aux bookmarklets — ou interdire l'envoi d'un formulaire vers un autre domaine (`form-action`, dans tous les navigateurs ; le favori affiche alors un message). Dans ces cas, utilisez **le copier-coller**.
 - Si `APP_URL` est en `http://` sur une autre adresse que `localhost`, le navigateur avertit qu'un formulaire est envoyé depuis une page https vers une adresse non sécurisée.
 - **Extraction d'annonces** : heuristiques, à vérifier à chaque import. Le prix dépend des dates et voyageurs saisis sur le site ; seuls les montants en euros sont reconnus ; une page longue est réduite au début de page et à la zone des tarifs (si cette zone n'est pas repérée, seuls les 30 000 premiers caractères sont gardés) ; les sélecteurs Booking n'ont pas encore été vérifiés sur le HTML réel ; l'année des dates est déduite quand elle manque ; la distance au centre n'est jamais extraite. Les motifs suivent la mise en page actuelle des sites et devront évoluer avec elle — les fixtures réelles servent de garde-fou.
+- **SerpApi** : client écrit d'après la documentation publique et testé contre des réponses synthétiques (aucun appel réel depuis l'environnement de développement) ; le format des réponses, le message de quota et le fait que le prix couvre tous les passagers sont à vérifier avec une vraie clé. Les jetons `departure_token` expirent côté SerpApi : au-delà du cache de 6 h, relancez la recherche.
 - **Vols** : sélecteurs et motifs établis sur des pages synthétiques ; Google Flights et Skyscanner changent souvent leur mise en page et peuvent bloquer le favori par leur CSP (copier-coller alors). Les horaires sont en heure locale des aéroports, sans fuseau ; les durées viennent de la page (pas de calcul entre fuseaux). Le prix relevé vieillit vite : le badge le rappelle, mais rien n'est actualisé automatiquement.
 - `POST /import` accepte des envois de n'importe quel site (c'est son rôle) : rien n'est créé sans confirmation, la taille est bornée et 50 imports au plus restent en attente.
 - Les images d'aperçu sont chargées directement depuis le site d'origine (`referrerPolicy="no-referrer"`) ; certaines peuvent être refusées (une icône les remplace) et ce chargement révèle votre adresse IP à ce site.
