@@ -203,3 +203,44 @@ export const stopDetailsSchema = z.object({
     }),
   notes: z.string().max(2000).default(""),
 });
+
+// ——— Import d'annonce ———
+
+const optionalNumber = (options: { int?: boolean; min?: number; max: number; label: string }) =>
+  z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value || !value.trim()) return undefined;
+      const n = Number(value.replace(/[\s  €]/g, "").replace(",", "."));
+      const valid = Number.isFinite(n) && n >= (options.min ?? 0) && n <= options.max && (!options.int || Number.isInteger(n));
+      if (!valid) {
+        ctx.addIssue({ code: "custom", message: options.label });
+        return z.NEVER;
+      }
+      return n;
+    });
+
+export const importConfirmSchema = z.object({
+  tripId: z.string().min(1, "Choisissez un voyage"),
+  comparisonId: z.string().min(1, "Choisissez un comparatif"),
+  title: z.string().trim().min(1, "Le titre est obligatoire").max(200),
+  url: optionalHttpUrl,
+  image: optionalHttpUrl,
+  description: z.string().trim().max(1000).default(""),
+  notes: z.string().max(5000).default(""),
+  address: z.string().trim().max(200).optional(),
+  totalPrice: optionalNumber({ max: 1_000_000, label: "Montant invalide" }),
+  pricePerNight: optionalNumber({ max: 100_000, label: "Montant invalide" }),
+  nights: optionalNumber({ int: true, min: 1, max: 90, label: "Entre 1 et 90 nuits" }),
+  rating: optionalNumber({ min: 1, max: 5, label: "Note entre 1 et 5" }),
+  reviewCount: optionalNumber({ int: true, max: 10_000_000, label: "Nombre entier attendu" }),
+  beds: optionalNumber({ int: true, max: 100, label: "Nombre entier attendu" }),
+  bedrooms: optionalNumber({ int: true, max: 100, label: "Nombre entier attendu" }),
+  guests: optionalNumber({ int: true, min: 1, max: 100, label: "Nombre entier attendu" }),
+  freeCancellation: z
+    .enum(["true", "false", ""])
+    .optional()
+    .transform((v) => (v === "true" ? true : v === "false" ? false : undefined)),
+});
+export type ImportConfirmInput = z.output<typeof importConfirmSchema>;

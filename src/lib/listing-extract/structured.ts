@@ -43,7 +43,9 @@ export function cleanDocumentTitle(title: string): string | null {
   const cleaned = clean(
     title
       .replace(/^Booking\.com\s*:\s*/i, "")
-      .replace(/\s*[-|–—·]\s*(?:Airbnb|Booking\.com|Abritel|Vrbo|HomeAway|Gîtes de France)\b.*$/i, ""),
+      .replace(/\s*[-|–—·]\s*(?:Airbnb|Booking\.com|Abritel|Vrbo|HomeAway|Gîtes de France)\b.*$/i, "")
+      // Booking : « …, Tokyo – Tarifs 2027 » / « … – Updated 2027 Prices »
+      .replace(/\s*[-–—]\s*(?:Tarifs|Prix|Updated)\b[^–—-]*$/i, ""),
     200,
   );
   return cleaned;

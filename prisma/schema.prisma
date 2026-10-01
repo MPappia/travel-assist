@@ -219,3 +219,18 @@ model ApiCache {
   value     String
   createdAt DateTime @default(now())
 }
+
+// Import d'annonce en attente de confirmation (bookmarklet ou copier-coller), effacé après 24 h.
+model PendingImport {
+  id         String   @id @default(cuid())
+  origin     String // "bookmarklet" | "paste"
+  url        String?
+  // Données brutes reçues (JSON ListingSource)
+  payload    String
+  // Résultat d'extraction mis en cache (JSON ListingExtraction), calculé à la première consultation
+  extraction String?
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([expiresAt])
+}

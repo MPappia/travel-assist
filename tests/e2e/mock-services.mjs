@@ -1,4 +1,5 @@
 // Faux services Photon + OpenRouteService pour les tests end-to-end (aucun appel réseau réel).
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 
 const PORT = Number(process.env.MOCK_PORT ?? 3101);
@@ -34,6 +35,11 @@ function feature([name, lat, lng, country]) {
 
 createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
+  // Page d'annonce fictive sur laquelle les tests exécutent le bookmarklet
+  if (req.method === "GET" && url.pathname === "/annonce") {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    return res.end(readFileSync("tests/fixtures/listings/page-with-metadata.synthetic.html", "utf8"));
+  }
   if (req.method === "GET" && url.pathname === "/api") {
     const q = (url.searchParams.get("q") ?? "").toLowerCase();
     return json(res, 200, { features: PLACES.filter((p) => p[0].toLowerCase().includes(q)).map(feature) });

@@ -188,6 +188,13 @@ describe("fiches synthétiques", () => {
     expect(fields.rating?.source).toBe("og");
   });
 
+  it("retire le suffixe de tarifs des titres Booking", () => {
+    const fr = extractListing({ title: "APA Hotel & Resort Ryogoku Ekimae Tower, Tokyo – Tarifs 2027" });
+    expect(fr.fields.title?.value).toBe("APA Hotel & Resort Ryogoku Ekimae Tower, Tokyo");
+    const en = extractListing({ title: "Hotel Sintra – Updated 2027 Prices" });
+    expect(en.fields.title?.value).toBe("Hotel Sintra");
+  });
+
   it("liste les champs manquants pour l'étage LLM", () => {
     const { fields } = extractListing({ text: "Petite maison\n3 lits" });
     expect(missingFields(fields)).toContain("totalPrice");

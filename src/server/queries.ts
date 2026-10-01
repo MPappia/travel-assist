@@ -73,3 +73,27 @@ export async function listRoutes(tripId: string) {
 }
 
 export type RouteWithStops = Awaited<ReturnType<typeof listRoutes>>[number];
+
+/** Voyages, comparatifs et critères proposés sur la page d'import. */
+export async function listImportTargets() {
+  return db.trip.findMany({
+    orderBy: [{ updatedAt: "desc" }],
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      startDate: true,
+      endDate: true,
+      comparisons: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          name: true,
+          criteria: { orderBy: { position: "asc" }, select: { id: true, name: true, type: true, unit: true } },
+        },
+      },
+    },
+  });
+}
+
+export type ImportTarget = Awaited<ReturnType<typeof listImportTargets>>[number];
