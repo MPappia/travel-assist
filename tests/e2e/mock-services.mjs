@@ -2,6 +2,8 @@
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 
+import { buildBookingPage } from "../fixtures/listings/build-booking-page.mjs";
+
 const PORT = Number(process.env.MOCK_PORT ?? 3101);
 export const MOCK_ORS_KEY = "test-key";
 
@@ -39,6 +41,11 @@ createServer((req, res) => {
   if (req.method === "GET" && url.pathname === "/annonce") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     return res.end(readFileSync("tests/fixtures/listings/page-with-metadata.synthetic.html", "utf8"));
+  }
+  // Page d'annonce volumineuse (structure Booking, texte > 100 000 car., JSON-LD de plusieurs centaines de Ko)
+  if (req.method === "GET" && url.pathname === "/annonce-volumineuse") {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    return res.end(buildBookingPage());
   }
   if (req.method === "GET" && url.pathname === "/api") {
     const q = (url.searchParams.get("q") ?? "").toLowerCase();

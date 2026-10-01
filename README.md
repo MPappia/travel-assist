@@ -64,7 +64,16 @@ Le favori contient l'adresse de l'application (`APP_URL`) : si elle change, réi
 
 ### L'utiliser
 
-Sur la page d'un logement — idéalement avec **vos dates et le nombre de voyageurs saisis**, puisque le prix affiché en dépend — cliquez sur le favori. Il collecte l'URL canonique, les balises `og:*` / `twitter:*`, le `<title>`, les blocs JSON-LD, trois images au plus et le texte visible (30 000 caractères maximum), puis les envoie par un formulaire `POST` dans un nouvel onglet (pas de `fetch`, donc pas de CORS).
+Sur la page d'un logement — idéalement avec **vos dates et le nombre de voyageurs saisis**, puisque le prix affiché en dépend — cliquez sur le favori. Il collecte l'URL canonique, les balises `og:*` / `twitter:*`, le `<title>`, les blocs JSON-LD, trois images au plus et le texte visible, puis les envoie par un formulaire `POST` dans un nouvel onglet (pas de `fetch`, donc pas de CORS).
+
+**Pages volumineuses (Booking…)** : les limites de taille sont définies une seule fois (`src/lib/bookmarklet/limits.ts`) et injectées dans le favori, qui réduit lui-même les données avant envoi :
+
+- JSON-LD : seuls les blocs utiles (Hotel, LodgingBusiness, Accommodation…, Product, Offer, AggregateRating, et les `@graph` qui en contiennent), sans avis ni champs inutilisés, dans l'ordre d'utilité jusqu'à la limite ;
+- texte : si la page dépasse 30 000 caractères, le début de page (~8 000 caractères : titre, note, adresse) **plus la zone des tarifs**, repérée par des sélecteurs par site (`src/lib/bookmarklet/sites.ts`, à mettre à jour si Booking change sa mise en page), sinon par l'en-tête du tableau des chambres, sinon par le premier bloc contenant plusieurs montants en € et « nuit » / « night ».
+
+Les réductions sont signalées discrètement sur la page d'import. Le serveur applique les mêmes règles (mêmes fonctions) à un envoi qui dépasserait encore une limite, et au copier-coller : il **tronque au lieu de rejeter** ; seul un envoi de plus de 2 Mo est refusé, avec un message qui conseille le copier-coller.
+
+**Favori de diagnostic** : sur `/import/setup` (« Glisser ne fonctionne pas ? »), un second favori affiche la taille de chaque champ, telle qu'elle sera envoyée, au lieu d'envoyer. Utile pour un retour de bug.
 
 `POST /import` ne crée rien : il stocke un import en attente (effacé après 24 h) et redirige vers `/import/[id]`. Là, vous vérifiez les champs extraits — chacun indique discrètement sa provenance (balises de partage, données structurées, texte de la page, IA) et, le cas échéant, une précision (chambre retenue, note convertie, date limite d'annulation) — puis vous choisissez le voyage et le comparatif (ou la création d'un comparatif « Logements »). Les critères correspondants (par nom, puis par unité sans ambiguïté) sont listés et décochables avant validation.
 
@@ -110,14 +119,16 @@ Le serveur doit accepter `response_format` de type `json_schema` (versions réce
 ## Tests
 
 - **Vitest** (`tests/unit`) : formatage, tâches, budget, validation, **scoring** (module pur), vue comparatif, parseur d'aperçu (Open Graph / JSON-LD), garde anti-SSRF, téléchargement HTML contre un serveur HTTP local (redirections, gzip, encodage, taille, délai), OpenRouteService (requête, réponse, erreurs), Photon, plan jour par jour, service d'itinéraire avec `fetch` simulé (clé manquante, cache, quota).
-- Import d'annonces : bookmarklet exécuté dans jsdom (code source et version minifiée générée), extraction sur les fiches réelles Airbnb (en) et Booking (fr) fournies et sur des fiches synthétiques clairement marquées (Abritel, Airbnb fr, page HTML avec og/JSON-LD), étage LLM avec `fetch` simulé (réussite, délai dépassé, erreur), validation du payload, correspondance avec les critères.
-- **Playwright** (`tests/e2e`) : 7 parcours.
+- Import d'annonces : bookmarklet exécuté dans jsdom (code source, version minifiée générée, mode diagnostic, respect des limites sur une page de structure Booking construite à partir du texte réel), réduction du texte et élagage du JSON-LD, troncature serveur au lieu du rejet, extraction sur les fiches réelles Airbnb (en) et Booking (fr) fournies et sur des fiches synthétiques clairement marquées (Abritel, Airbnb fr, page HTML avec og/JSON-LD), étage LLM avec `fetch` simulé (réussite, délai dépassé, erreur), validation du payload, correspondance avec les critères.
+- **Playwright** (`tests/e2e`) : 8 tests.
   1. Créer un voyage, des tâches (retard, filtre, cocher, supprimer) et des dépenses (alerte de dépassement), vérifier le tableau de bord.
   2. Comparer 3 logements sur 5 critères, lire le verdict, écarter, retenir et créer la dépense.
   3. Coller un lien qui échoue (et une adresse locale refusée) : l'élément est créé et se complète à la main.
   4. Road trip de 6 étapes : autocomplétion, réordonnancement au clavier, persistance, changement de mode, suppression, jour par jour, étape non routable.
-  5. Bookmarklet exécuté sur une page d'annonce locale : nouvel onglet, vérification, correction, critères décochés, ajout au comparatif ; envoi invalide.
-  6. Copier-coller de la fiche Airbnb réelle jusqu'aux critères pré-remplis.
+  5. Favori exécuté sur une page d'annonce locale : nouvel onglet, vérification, correction, critères décochés, ajout au comparatif.
+  6. Envoi invalide (adresse non http) : renvoi vers l'aide, rien n'est créé.
+  7. Copier-coller de la fiche Airbnb réelle jusqu'aux critères pré-remplis.
+  8. Page d'annonce volumineuse (JSON-LD de plusieurs centaines de Ko, texte de plus de 100 000 caractères) importée sans rejet, réductions signalées.
 
   Les tests e2e utilisent une base dédiée (`prisma/e2e.db`, recréée à chaque lancement) et un **faux service Photon / ORS local** (`tests/e2e/mock-services.mjs`) : ils ne dépendent ni du réseau ni d'une clé. Le navigateur Chromium de Playwright 1.56 doit être installé (`npx playwright install chromium` si besoin).
 
@@ -188,7 +199,7 @@ Aucune bibliothèque de scraping, de parsing HTML ou de navigateur headless ; au
 - **Aperçu côté serveur** : Airbnb, Booking et Abritel protègent leurs pages contre les robots (pages de défi, 403, contenu rendu en JavaScript) ; l'aperçu serveur est donc souvent vide. C'est un choix assumé : pas de navigateur headless ni de contournement de protection. L'élément est **toujours créé** et tout reste saisissable à la main ; l'import par le navigateur (favori ou copier-coller) prend le relais.
 - **Favori d'import et CSP** : un site dont la politique de sécurité (CSP) est stricte peut bloquer le favori — en particulier sous **Firefox**, qui applique la CSP de la page aux bookmarklets — ou interdire l'envoi d'un formulaire vers un autre domaine (`form-action`, dans tous les navigateurs ; le favori affiche alors un message). Dans ces cas, utilisez **le copier-coller**.
 - Si `APP_URL` est en `http://` sur une autre adresse que `localhost`, le navigateur avertit qu'un formulaire est envoyé depuis une page https vers une adresse non sécurisée.
-- **Extraction d'annonces** : heuristiques, à vérifier à chaque import. Le prix dépend des dates et voyageurs saisis sur le site ; seuls les montants en euros sont reconnus ; le texte est tronqué à 30 000 caractères (le haut de la page, où figurent titre, note et premiers tarifs, est conservé) ; l'année des dates est déduite quand elle manque ; la distance au centre n'est jamais extraite. Les motifs suivent la mise en page actuelle des sites et devront évoluer avec elle — les fixtures réelles servent de garde-fou.
+- **Extraction d'annonces** : heuristiques, à vérifier à chaque import. Le prix dépend des dates et voyageurs saisis sur le site ; seuls les montants en euros sont reconnus ; une page longue est réduite au début de page et à la zone des tarifs (si cette zone n'est pas repérée, seuls les 30 000 premiers caractères sont gardés) ; les sélecteurs Booking n'ont pas encore été vérifiés sur le HTML réel ; l'année des dates est déduite quand elle manque ; la distance au centre n'est jamais extraite. Les motifs suivent la mise en page actuelle des sites et devront évoluer avec elle — les fixtures réelles servent de garde-fou.
 - `POST /import` accepte des envois de n'importe quel site (c'est son rôle) : rien n'est créé sans confirmation, la taille est bornée et 50 imports au plus restent en attente.
 - Les images d'aperçu sont chargées directement depuis le site d'origine (`referrerPolicy="no-referrer"`) ; certaines peuvent être refusées (une icône les remplace) et ce chargement révèle votre adresse IP à ce site.
 - **Services gratuits** : ORS limite le nombre de requêtes (par minute et par jour), à 50 étapes par itinéraire et à une distance maximale par trajet ; Photon public est en « usage raisonnable ». Le cache limite les appels, mais un quota atteint affiche un message et il faut patienter. Carte, géocodage et itinéraire nécessitent une connexion Internet.
