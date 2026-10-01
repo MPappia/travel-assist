@@ -107,3 +107,47 @@ export function priceAge(capturedAt: Date, now: Date = new Date()): PriceAge {
   const label = days === 0 ? "prix relevé aujourd'hui" : days === 1 ? "prix relevé hier" : `prix relevé il y a ${days} jours`;
   return { days, label, stale: days > PRICE_STALE_AFTER_DAYS };
 }
+
+/** 845 → « 14 h 05 » (saisie et affichage des durées de vol). */
+export function formatDurationInput(minutes: number | null | undefined): string {
+  if (minutes === null || minutes === undefined) return "";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h === 0 ? `${m} min` : `${h} h ${String(m).padStart(2, "0")}`;
+}
+
+/** « 14 h 05 », « 14h05 », « 14:05 », « 845 » (minutes) → 845 ; null si illisible. */
+export function parseDurationInput(value: string): number | null {
+  const v = value.trim().toLowerCase();
+  if (!v) return null;
+  if (/^\d+$/.test(v)) return Number(v);
+  const hm = v.match(/^(\d{1,2})\s*(?:h|:)\s*(\d{1,2})?\s*(?:min)?$/);
+  if (hm) return Number(hm[1]) * 60 + Number(hm[2] ?? 0);
+  const m = v.match(/^(\d{1,3})\s*min$/);
+  return m ? Number(m[1]) : null;
+}
+
+/** Notes pré-remplies d'un vol importé : segments, escales, passagers, date du relevé. */
+export function buildFlightNotes(
+  details: Pick<FlightDetails, "outbound" | "inbound" | "passengers" | "currency">,
+  context: { domain?: string | null; capturedAt: Date; priceNote?: string },
+): string {
+  const lines: string[] = [];
+  const describe = (label: string, leg: FlightLeg | undefined) => {
+    if (!leg || leg.segments.length === 0) return;
+    const segments = leg.segments
+      .map((s) => `${s.from.code ?? "?"}→${s.to.code ?? "?"}${s.flightNumber ? ` ${s.flightNumber}` : ""}${s.departure ? ` (${s.departure.replace("T", " ")})` : ""}`)
+      .join(", ");
+    const layovers = leg.layovers.length
+      ? ` ; escale${leg.layovers.length > 1 ? "s" : ""} : ${leg.layovers.map((l) => `${l.airport.code ?? l.airport.name}${l.durationMin ? ` ${formatDurationInput(l.durationMin)}` : ""}`).join(", ")}`
+      : "";
+    lines.push(`${label} : ${segments}${layovers}.`);
+  };
+  describe("Aller", details.outbound);
+  describe("Retour", details.inbound);
+  if (details.passengers) lines.push(`${details.passengers} passager${details.passengers > 1 ? "s" : ""}.`);
+  if (context.priceNote) lines.push(`Prix : ${context.priceNote}.`);
+  const date = context.capturedAt.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  lines.push(`Prix relevé${context.domain ? ` sur ${context.domain}` : ""} le ${date}.`);
+  return lines.join("\n");
+}

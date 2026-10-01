@@ -4,10 +4,12 @@ import Link from "next/link";
 import { ClockIcon } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
+import { FlightImportForm } from "@/components/import/flight-import-form";
 import { ImportForm } from "@/components/import/import-form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { NEW_COMPARISON } from "@/lib/listing-extract/criteria-mapping";
+import { buildFlightNotes } from "@/lib/domain/flights";
+import { defaultComparisonFor } from "@/lib/listing-extract/criteria-mapping";
 import { buildImportNotes } from "@/lib/listing-extract/notes";
 import type { ListingSource } from "@/lib/listing-extract/types";
 import { getImportExtraction, getPendingImport } from "@/server/pending-imports";
@@ -59,15 +61,39 @@ async function ImportReview({
 }) {
   const [extraction, targets] = await Promise.all([getImportExtraction(pending), listImportTargets()]);
 
-  // Sélection par défaut : comparatif demandé (copier-coller), sinon premier comparatif « logement »
-  // du voyage le plus récemment modifié et non terminé, sinon création d'un comparatif « Logements ».
+  // Sélection par défaut : comparatif demandé (copier-coller), sinon premier comparatif du type de
+  // l'annonce (vols ou logements) du voyage le plus récemment modifié et non terminé, sinon création.
   const preferredTrip = preferredComparisonId
     ? targets.find((t) => t.comparisons.some((c) => c.id === preferredComparisonId))
     : undefined;
   const defaultTrip = preferredTrip ?? targets.find((t) => t.status !== "DONE") ?? targets[0];
-  const defaultComparison = preferredTrip
-    ? preferredComparisonId!
-    : (defaultTrip?.comparisons.find((c) => /logement|h[ée]bergement|lodging/i.test(c.name))?.id ?? NEW_COMPARISON);
+  const defaultComparison = preferredTrip ? preferredComparisonId! : defaultComparisonFor(extraction.kind, defaultTrip?.comparisons);
+  const warnings = (JSON.parse(pending.payload) as ListingSource).warnings ?? [];
+
+  if (extraction.kind === "flight") {
+    const flight = extraction.flight ?? {};
+    return (
+      <FlightImportForm
+        pendingId={pending.id}
+        url={pending.url}
+        extraction={extraction}
+        targets={targets}
+        defaultTripId={defaultTrip?.id ?? ""}
+        defaultComparisonId={defaultComparison}
+        defaultNotes={buildFlightNotes(
+          {
+            outbound: flight.outbound?.value,
+            inbound: flight.inbound?.value,
+            passengers: flight.passengers?.value,
+            currency: flight.currency?.value,
+          },
+          { domain: extraction.domain, capturedAt: pending.createdAt, priceNote: flight.totalPrice?.note },
+        )}
+        capturedAt={pending.createdAt}
+        warnings={warnings}
+      />
+    );
+  }
 
   return (
     <ImportForm
@@ -78,7 +104,7 @@ async function ImportReview({
       defaultTripId={defaultTrip?.id ?? ""}
       defaultComparisonId={defaultComparison}
       defaultNotes={buildImportNotes(extraction)}
-      warnings={(JSON.parse(pending.payload) as ListingSource).warnings ?? []}
+      warnings={warnings}
     />
   );
 }

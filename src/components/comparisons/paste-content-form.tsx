@@ -16,6 +16,7 @@ import { createImportFromText } from "@/server/actions/imports";
 /**
  * Secours au bookmarklet (et usage sur mobile) : le texte copié depuis la page de l'annonce
  * passe par le même pipeline d'extraction et la même page de confirmation.
+ * Le type du comparatif (« Vols », « Logements ») oriente l'extracteur.
  */
 export function PasteContentForm({ comparisonId }: { comparisonId: string }) {
   const router = useRouter();
@@ -32,7 +33,7 @@ export function PasteContentForm({ comparisonId }: { comparisonId: string }) {
       onSubmit={(event) => {
         event.preventDefault();
         startTransition(async () => {
-          const result = await createImportFromText({ text, url });
+          const result = await createImportFromText({ text, url, comparisonId });
           if (!result.ok) {
             setErrors(result.fieldErrors ?? {});
             toast.error(result.error);

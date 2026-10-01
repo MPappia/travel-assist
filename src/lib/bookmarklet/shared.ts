@@ -19,16 +19,24 @@ export interface ReducedText {
  * La zone est fournie (`ratesText`, repérée dans le DOM) ou cherchée dans le texte : en-tête de tableau
  * de chambres, sinon premier bloc contenant plusieurs montants en € et « nuit » / « night ».
  */
-export function reduceListingText(raw: string, limits: TextLimits, ratesText?: string | null, ratesSource?: string | null): ReducedText {
+export function reduceListingText(
+  raw: string,
+  limits: TextLimits,
+  ratesText?: string | null,
+  ratesSource?: string | null,
+  options?: { force?: boolean; headChars?: number } | null,
+): ReducedText {
   const text = String(raw || "").replace(/\r\n?/g, "\n");
-  if (text.length <= limits.text) return { text, note: null };
+  // `force` (sites de vols) : même sous la limite, on ne garde que le début de page et la zone repérée.
+  const forced = !!(options && options.force && ratesText && ratesText.trim());
+  if (text.length <= limits.text && !forced) return { text, note: null };
 
   const cutAtLine = (s: string) => {
     const last = s.lastIndexOf("\n");
     return last > s.length * 0.8 ? s.slice(0, last) : s;
   };
   const fmt = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  const head = cutAtLine(text.slice(0, limits.textHead));
+  const head = cutAtLine(text.slice(0, options && options.headChars ? options.headChars : limits.textHead));
   const separator = "\n[…]\n";
   const ratesBudget = Math.min(limits.textRates, limits.text - head.length - separator.length);
 
@@ -36,13 +44,16 @@ export function reduceListingText(raw: string, limits: TextLimits, ratesText?: s
   let how = "";
   if (ratesText && ratesText.trim()) {
     zone = cutAtLine(String(ratesText).replace(/\r\n?/g, "\n").slice(0, ratesBudget));
-    how = ratesSource ? `tableau des tarifs (${ratesSource})` : "tableau des tarifs";
+    how = ratesSource ? `zone repérée (${ratesSource})` : "zone repérée";
   } else {
     // 1. En-têtes de tableau de chambres / tarifs
     const anchors = [
       /^(?:Type d'hébergement|Type de logement|Room type|Accommodation type)\b/im,
       /\b(?:Tarif pour|Prix pour|Price for)\s+\d+\s+(?:nuits?|nights?)\b/i,
       /^(?:Personnes max\.?|Max\.? (?:people|persons|guests))\s*:/im,
+      // Vols : panneau de détail (durées de segment, escales)
+      /^(?:Durée du trajet|Travel time)\b/im,
+      /^(?:Escale de|Correspondance)\b/im,
     ];
     let start = -1;
     for (const anchor of anchors) {
@@ -194,4 +205,30 @@ export function pruneJsonLd(rawBlocks: string[], limit: number, maxBlocks: numbe
   if (unreadable) details.push(`${unreadable} illisible${unreadable > 1 ? "s" : ""}`);
   if (candidates.length > blocks.length) details.push(`${candidates.length - blocks.length} bloc(s) utile(s) écarté(s) faute de place`);
   return { blocks, note: `JSON-LD : ${details.join(", ")}` };
+}
+
+export interface SiteMatchConfig {
+  hosts: string[];
+  paths?: string[];
+}
+
+/**
+ * Trouve la configuration du site pour une adresse. Motifs : « booking.com » couvre aussi
+ * www.booking.com ; « skyscanner.* » couvre skyscanner.fr, www.skyscanner.co.uk…
+ */
+export function matchSite<T extends SiteMatchConfig>(hostname: string, pathname: string, sites: T[]): T | null {
+  const host = String(hostname || "").toLowerCase();
+  for (const site of sites) {
+    const hostOk = site.hosts.some((pattern) => {
+      const p = pattern.toLowerCase();
+      if (p.slice(-2) === ".*") {
+        const base = p.slice(0, -2).replace(/[.]/g, "\\.");
+        return new RegExp("(^|\\.)" + base + "\\.[a-z]{2,3}(\\.[a-z]{2})?$").test(host);
+      }
+      return host === p || host.slice(-p.length - 1) === "." + p;
+    });
+    const pathOk = !site.paths || site.paths.some((prefix) => String(pathname || "").indexOf(prefix) === 0);
+    if (hostOk && pathOk) return site;
+  }
+  return null;
 }

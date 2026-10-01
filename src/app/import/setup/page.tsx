@@ -96,6 +96,10 @@ export default async function ImportSetupPage({ searchParams }: PageProps<"/impo
             prix affiché soit le bon), cliquez sur le favori. Un nouvel onglet s&apos;ouvre avec les informations
             trouvées : vérifiez-les, choisissez le voyage et le comparatif, puis validez.
           </p>
+          <p>
+            Pour un vol (Google Flights, Skyscanner…), ouvrez d&apos;abord le détail du vol choisi (segments, escales,
+            bagages) avant de cliquer sur le favori : le prix et sa date de relevé sont enregistrés avec le vol.
+          </p>
         </CardContent>
       </Card>
 

@@ -3,8 +3,8 @@ import "server-only";
 import { transform } from "esbuild";
 
 import { IMPORT_LIMITS } from "@/lib/bookmarklet/limits";
-import { pruneJsonLd, reduceListingText } from "@/lib/bookmarklet/shared";
-import { DEFAULT_RATES_HEADERS, SITE_CONFIGS } from "@/lib/bookmarklet/sites";
+import { matchSite, pruneJsonLd, reduceListingText } from "@/lib/bookmarklet/shared";
+import { DEFAULT_ZONE_HEADERS, SITE_CONFIGS } from "@/lib/bookmarklet/sites";
 import { sendToTravelerAssist, type BookmarkletConfig, type BookmarkletOptions } from "@/lib/bookmarklet/source";
 
 export const DEFAULT_APP_URL = "http://localhost:3000";
@@ -42,10 +42,10 @@ export function buildBookmarklet(appUrl: string = getAppUrl(), options: Bookmark
         ...options,
         limits: IMPORT_LIMITS,
         sites: SITE_CONFIGS,
-        defaultRatesHeaders: DEFAULT_RATES_HEADERS,
+        defaultZoneHeaders: DEFAULT_ZONE_HEADERS,
       };
       // Limites, sites et fonctions de réduction partagés avec le serveur sont injectés ici.
-      const helpers = `{reduceListingText: ${reduceListingText.toString()}, pruneJsonLd: ${pruneJsonLd.toString()}}`;
+      const helpers = `{reduceListingText: ${reduceListingText.toString()}, pruneJsonLd: ${pruneJsonLd.toString()}, matchSite: ${matchSite.toString()}}`;
       const source = `(${sendToTravelerAssist.toString()})(${JSON.stringify(appUrl)}, ${JSON.stringify(config)}, document, ${helpers});`;
       const { code } = await transform(source, { minify: true, loader: "js", target: "es2018", charset: "utf8" });
       // Une URL javascript: dont le script a une valeur de complétion non indéfinie remplace la page

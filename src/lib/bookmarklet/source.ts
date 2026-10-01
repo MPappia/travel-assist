@@ -10,7 +10,7 @@
 // serveur, et les envoie par un <form method="POST" target="_blank"> (pas de fetch : pas de CORS).
 // Le serveur ne crée rien sans confirmation de l'utilisateur.
 import type { ImportLimits } from "@/lib/bookmarklet/limits";
-import type { pruneJsonLd, reduceListingText } from "@/lib/bookmarklet/shared";
+import type { matchSite, pruneJsonLd, reduceListingText } from "@/lib/bookmarklet/shared";
 import type { SiteConfig } from "@/lib/bookmarklet/sites";
 
 export interface BookmarkletOptions {
@@ -21,12 +21,13 @@ export interface BookmarkletOptions {
 export interface BookmarkletConfig extends BookmarkletOptions {
   limits: ImportLimits;
   sites: SiteConfig[];
-  defaultRatesHeaders: string[];
+  defaultZoneHeaders: string[];
 }
 
 export interface BookmarkletHelpers {
   reduceListingText: typeof reduceListingText;
   pruneJsonLd: typeof pruneJsonLd;
+  matchSite: typeof matchSite;
 }
 
 export function sendToTravelerAssist(
@@ -126,14 +127,14 @@ export function sendToTravelerAssist(
     .sort((a: { area: number }, b: { area: number }) => b.area - a.area)
     .forEach((c: { src: string }) => addImage(c.src));
 
-  // 5. Texte : début de page + zone des tarifs si la page est trop longue
+  // 5. Texte : début de page + zone pertinente (tarifs, détail du vol) si la page est trop longue,
+  //    ou toujours sur les sites où plusieurs offres se mélangent (vols)
   const rawText = visibleText(doc.body);
+  const site = helpers.matchSite(doc.location.hostname, doc.location.pathname, config.sites);
   let ratesText: string | null = null;
   let ratesSource: string | null = null;
-  if (rawText.length > limits.text) {
-    const host = doc.location.hostname;
-    const site = config.sites.filter((s) => s.domains.some((d) => host === d || host.slice(-d.length - 1) === "." + d))[0];
-    const selectors = site ? site.ratesSelectors : [];
+  if (rawText.length > limits.text || (site && site.alwaysUseZone)) {
+    const selectors = site ? site.zoneSelectors : [];
     for (const selector of selectors) {
       let el: HTMLElement | null = null;
       try {
@@ -149,7 +150,7 @@ export function sendToTravelerAssist(
       }
     }
     if (!ratesText) {
-      const headers = site ? site.ratesHeaders : config.defaultRatesHeaders;
+      const headers = site ? site.zoneHeaders : config.defaultZoneHeaders;
       const tables = Array.prototype.slice.call(doc.querySelectorAll("table, [role='table'], [role='grid']")) as HTMLElement[];
       for (const table of tables) {
         const t = visibleText(table);
@@ -161,7 +162,10 @@ export function sendToTravelerAssist(
       }
     }
   }
-  const reduced = helpers.reduceListingText(rawText, limits, ratesText, ratesSource);
+  const reduced = helpers.reduceListingText(rawText, limits, ratesText, ratesSource, {
+    force: !!(site && site.alwaysUseZone),
+    headChars: site && site.headChars ? site.headChars : undefined,
+  });
   if (reduced.note) truncated.push(reduced.note);
   const text = fitSent(reduced.text, limits.text);
 
@@ -191,7 +195,7 @@ export function sendToTravelerAssist(
     );
     const report =
       `Traveler Assist — diagnostic (rien n'a été envoyé)\n\n${lines.join("\n")}\n\nTotal : ${Math.round(total / 1024)} Ko` +
-      `\nTexte brut de la page : ${rawText.length} car. ; zone des tarifs : ${ratesSource || "non repérée dans le DOM"}` +
+      `\nSite : ${site ? site.id : "non configuré"} ; texte brut : ${rawText.length} car. ; zone : ${ratesSource || "non repérée dans le DOM"}` +
       (truncated.length ? `\n\nRéductions :\n- ${truncated.join("\n- ")}` : "");
     if (win) win.alert(report);
     return null;

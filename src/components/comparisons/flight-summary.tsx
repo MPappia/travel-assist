@@ -23,7 +23,7 @@ export function PriceAgeBadge({ capturedAt }: { capturedAt: Date }) {
   );
 }
 
-function LegLine({ label, leg }: { label: string; leg: FlightLeg }) {
+export function LegLine({ label, leg }: { label: string; leg: FlightLeg }) {
   const stops = stopsOf(leg);
   const layovers = leg.layovers
     .map((l) => `${l.airport.code ?? l.airport.name ?? "?"}${l.durationMin ? ` ${formatDuration(l.durationMin * 60)}` : ""}`)

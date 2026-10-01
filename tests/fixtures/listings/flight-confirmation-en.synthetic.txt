@@ -1,0 +1,10 @@
+SYNTHETIC FIXTURE — plausible English flight summary (generic site), until real pages are provided.
+Your trip: London (LHR) to New York (JFK)
+1 adult · Economy
+Outbound · Fri, Mar 19, 2027
+Total travel time: 8 hr 5 min · Nonstop
+09:15 London Heathrow (LHR)
+British Airways BA117 · 8 hr 5 min
+12:20 New York John F. Kennedy (JFK)
+Total: £642
+1 checked bag included

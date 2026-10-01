@@ -89,6 +89,7 @@ export async function listImportTargets() {
         select: {
           id: true,
           name: true,
+          kind: true,
           criteria: { orderBy: { position: "asc" }, select: { id: true, name: true, type: true, unit: true } },
         },
       },

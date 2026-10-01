@@ -2,6 +2,7 @@
 // en valeurs typées prêtes pour la base (dates UTC, montants en centimes…).
 import { z } from "zod";
 
+import { parseDurationInput } from "@/lib/domain/flights";
 import { parseDateInput, parseMoneyToCents } from "@/lib/format";
 import {
   COMPARISON_KINDS,
@@ -252,3 +253,45 @@ export const importConfirmSchema = z.object({
     .transform((v) => (v === "true" ? true : v === "false" ? false : undefined)),
 });
 export type ImportConfirmInput = z.output<typeof importConfirmSchema>;
+
+// ——— Import d'un vol ———
+
+const optionalDuration = z
+  .string()
+  .optional()
+  .transform((value, ctx) => {
+    if (!value || !value.trim()) return undefined;
+    const minutes = parseDurationInput(value);
+    if (minutes === null || minutes < 1 || minutes > 5000) {
+      ctx.addIssue({ code: "custom", message: "Durée attendue, ex. 14 h 05" });
+      return z.NEVER;
+    }
+    return minutes;
+  });
+
+export const flightImportConfirmSchema = z.object({
+  tripId: z.string().min(1, "Choisissez un voyage"),
+  comparisonId: z.string().min(1, "Choisissez un comparatif"),
+  title: z.string().trim().min(1, "Le titre est obligatoire").max(200),
+  url: optionalHttpUrl,
+  notes: z.string().max(5000).default(""),
+  totalPrice: optionalNumber({ max: 1_000_000, label: "Montant invalide" }),
+  currency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .optional()
+    .refine((v) => !v || /^[A-Z]{3}$/.test(v), "Code de devise en 3 lettres (EUR, USD…)"),
+  passengers: optionalNumber({ int: true, min: 1, max: 9, label: "Entre 1 et 9 passagers" }),
+  outboundDuration: optionalDuration,
+  inboundDuration: optionalDuration,
+  stops: optionalNumber({ int: true, max: 10, label: "Nombre entier attendu" }),
+  checkedBag: z
+    .enum(["true", "false", ""])
+    .optional()
+    .transform((v) => (v === "true" ? true : v === "false" ? false : undefined)),
+  airlines: z.string().trim().max(200).optional(),
+  outboundSchedule: z.string().trim().max(120).optional(),
+  inboundSchedule: z.string().trim().max(120).optional(),
+});
+export type FlightImportConfirmInput = z.output<typeof flightImportConfirmSchema>;

@@ -1,0 +1,22 @@
+FIXTURE SYNTHÉTIQUE — texte plausible imitant la page de détail d'un vol Skyscanner (fr), en attendant une page réelle.
+Paris (CDG) → Lisbonne (LIS)
+2 adultes, Économique
+Aller · lun. 12 juil. 2027
+08:40 CDG → 10:15 LIS
+2 h 35, Direct
+08:40 Paris Charles de Gaulle (CDG)
+TAP Air Portugal TP433 · 2 h 35
+10:15 Lisbonne Humberto Delgado (LIS)
+Retour · lun. 19 juil. 2027
+18:25 LIS → 23:50 CDG
+4 h 25, 1 escale
+18:25 Lisbonne Humberto Delgado (LIS)
+Vueling VY8461 · 1 h 50
+21:15 Barcelone El Prat (BCN)
+Correspondance 1 h 05 à Barcelone (BCN)
+22:20 Barcelone El Prat (BCN)
+Vueling VY8022 · 1 h 30
+23:50 Paris Charles de Gaulle (CDG)
+Prix : 214 € par personne
+Bagage en soute inclus
+Réserver

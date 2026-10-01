@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 
 import { buildBookmarklet } from "@/lib/bookmarklet/generate";
 import { IMPORT_LIMITS } from "@/lib/bookmarklet/limits";
-import { pruneJsonLd, reduceListingText } from "@/lib/bookmarklet/shared";
-import { DEFAULT_RATES_HEADERS, SITE_CONFIGS } from "@/lib/bookmarklet/sites";
+import { matchSite, pruneJsonLd, reduceListingText } from "@/lib/bookmarklet/shared";
+import { DEFAULT_ZONE_HEADERS, SITE_CONFIGS } from "@/lib/bookmarklet/sites";
 import { sendToTravelerAssist } from "@/lib/bookmarklet/source";
 
 const html = readFileSync("tests/fixtures/listings/page-with-metadata.synthetic.html", "utf8");
@@ -43,9 +43,9 @@ function setup(markup = html) {
 function runBookmarklet(doc: Document, appUrl = APP_URL, debug = false) {
   return sendToTravelerAssist(
     appUrl,
-    { limits: IMPORT_LIMITS, sites: SITE_CONFIGS, defaultRatesHeaders: DEFAULT_RATES_HEADERS, debug },
+    { limits: IMPORT_LIMITS, sites: SITE_CONFIGS, defaultZoneHeaders: DEFAULT_ZONE_HEADERS, debug },
     doc,
-    { reduceListingText, pruneJsonLd },
+    { reduceListingText, pruneJsonLd, matchSite },
   );
 }
 
@@ -123,7 +123,7 @@ describe("bookmarklet généré", () => {
     expect(bookmarklet.href.startsWith("javascript:")).toBe(true);
     expect(bookmarklet.href).not.toMatch(/[\s"<>]/);
     expect(bookmarklet.code).not.toContain("⚠️"); // commentaires retirés
-    const sources = [sendToTravelerAssist, reduceListingText, pruneJsonLd].reduce((n, f) => n + f.toString().length, 0);
+    const sources = [sendToTravelerAssist, reduceListingText, pruneJsonLd, matchSite].reduce((n, f) => n + f.toString().length, 0);
     expect(bookmarklet.code.length).toBeLessThan(sources);
 
     const { dom, submissions } = setup();

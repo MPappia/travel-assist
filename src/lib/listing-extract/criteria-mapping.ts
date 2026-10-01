@@ -6,6 +6,22 @@ import type { ListingValues } from "@/lib/listing-extract/types";
 /** Valeur du sélecteur de comparatif pour « créer un comparatif Logements ». */
 export const NEW_COMPARISON = "new";
 
+/**
+ * Comparatif proposé par défaut dans un voyage : le premier du type de l'annonce (« Vols » ou
+ * « Logements », par type puis par nom), sinon la création d'un comparatif de ce type.
+ */
+export function defaultComparisonFor(
+  kind: "lodging" | "flight",
+  comparisons: readonly { id: string; name: string; kind?: string }[] | undefined,
+): string {
+  const list = comparisons ?? [];
+  const byKind = list.find((c) => c.kind === (kind === "flight" ? "FLIGHTS" : "LODGING"));
+  const byName = list.find((c) =>
+    kind === "flight" ? /\bvols?\b|flight|avion/i.test(c.name) : /logement|h[ée]bergement|lodging/i.test(c.name),
+  );
+  return (byKind ?? byName)?.id ?? NEW_COMPARISON;
+}
+
 export const MAPPABLE_FIELDS = [
   "pricePerNight",
   "totalPrice",
@@ -28,12 +44,7 @@ export interface MappableCriterion {
   unit: string;
 }
 
-export interface CriterionMatch {
-  field: MappableField;
-  criterion: MappableCriterion;
-  value: number | string | boolean;
-  matchedBy: "nom" | "unité";
-}
+export type CriterionMatch = FieldMatch<MappableField>;
 
 const normalize = (s: string) =>
   s
@@ -75,32 +86,43 @@ const RULES: Record<MappableField, Rule> = {
   freeCancellation: { types: ["BOOLEAN"], name: /annulation|cancel|rembours/ },
 };
 
-function usable(field: MappableField, value: unknown): boolean {
+function usable(field: string, value: unknown): boolean {
   if (value === undefined || value === null || value === "") return false;
   if (field === "rating") return typeof value === "number" && value >= 1 && value <= 5;
   return true;
 }
 
+export interface FieldMatch<F extends string> {
+  field: F;
+  criterion: MappableCriterion;
+  value: number | string | boolean;
+  matchedBy: "nom" | "unité";
+}
+
 /**
  * Associe chaque champ extrait à au plus un critère (et chaque critère à au plus un champ).
- * Le nom prime ; l'unité ne sert qu'en second recours (ex. un seul critère en « € »).
+ * Le nom prime ; l'unité ne sert qu'en second recours, et seulement sans ambiguïté.
  */
-export function mapListingToCriteria(criteria: readonly MappableCriterion[], values: MappableValues): CriterionMatch[] {
-  const matches: CriterionMatch[] = [];
+function mapFields<F extends string>(
+  criteria: readonly MappableCriterion[],
+  values: Partial<Record<F, number | string | boolean>>,
+  rules: Record<F, Rule>,
+  order: readonly F[],
+): FieldMatch<F>[] {
+  const matches: FieldMatch<F>[] = [];
   const usedCriteria = new Set<string>();
-  const usedFields = new Set<MappableField>();
+  const usedFields = new Set<F>();
 
   for (const pass of ["nom", "unité"] as const) {
-    for (const field of MAPPABLE_FIELDS) {
+    for (const field of order) {
       if (usedFields.has(field) || !usable(field, values[field])) continue;
-      const rule = RULES[field];
+      const rule = rules[field];
       const candidates = criteria.filter((c) => {
         if (usedCriteria.has(c.id) || !rule.types.includes(c.type)) return false;
         const name = normalize(c.name);
         if (rule.exclude?.test(name)) return false;
         return pass === "nom" ? rule.name.test(name) : (rule.unit?.(normalize(c.unit)) ?? false);
       });
-      // Repli par unité seulement s'il n'y a pas d'ambiguïté
       if (candidates.length === 0 || (pass === "unité" && candidates.length > 1)) continue;
       const criterion = candidates[0];
       matches.push({ field, criterion, value: values[field]!, matchedBy: pass });
@@ -110,6 +132,62 @@ export function mapListingToCriteria(criteria: readonly MappableCriterion[], val
   }
   return matches;
 }
+
+export function mapListingToCriteria(criteria: readonly MappableCriterion[], values: MappableValues): CriterionMatch[] {
+  return mapFields(criteria, values, RULES, MAPPABLE_FIELDS);
+}
+
+// ——— Vols ———
+
+export const FLIGHT_MAPPABLE_FIELDS = [
+  "totalPrice",
+  "outboundDuration",
+  "inboundDuration",
+  "stops",
+  "checkedBag",
+  "airlines",
+  "outboundSchedule",
+  "inboundSchedule",
+] as const;
+export type FlightMappableField = (typeof FLIGHT_MAPPABLE_FIELDS)[number];
+export type FlightMappableValues = Partial<Record<FlightMappableField, number | string | boolean>>;
+
+const FLIGHT_RULES: Record<FlightMappableField, Rule> = {
+  totalPrice: {
+    types: ["NUMBER"],
+    name: /prix|tarif|cout|price|montant|total|budget/,
+    exclude: /nuit|night|personne|person|duree|escale/,
+    unit: (u) => u === "€" || u === "eur" || u === "euros",
+  },
+  outboundDuration: { types: ["NUMBER"], name: /dur.*aller|aller.*dur|temps.*aller|outbound|duration.*out/ },
+  inboundDuration: { types: ["NUMBER"], name: /dur.*retour|retour.*dur|temps.*retour|inbound|return/ },
+  stops: { types: ["NUMBER"], name: /escale|stops?\b|correspondance/ },
+  checkedBag: { types: ["BOOLEAN"], name: /bagage|baggage|\bbags?\b|soute|luggage/ },
+  airlines: { types: ["TEXT"], name: /compagnie|airline|transporteur|carrier/ },
+  outboundSchedule: { types: ["TEXT"], name: /horaire.*aller|aller.*horaire|schedule.*out|depart.*horaire/ },
+  inboundSchedule: { types: ["TEXT"], name: /horaire.*retour|retour.*horaire|schedule.*return/ },
+};
+
+export function mapFlightToCriteria(
+  criteria: readonly MappableCriterion[],
+  values: FlightMappableValues,
+): FieldMatch<FlightMappableField>[] {
+  return mapFields(criteria, values, FLIGHT_RULES, FLIGHT_MAPPABLE_FIELDS);
+}
+
+export const FLIGHT_FIELD_LABELS: Record<FlightMappableField | "title" | "currency" | "passengers", string> = {
+  title: "Titre",
+  totalPrice: "Prix total",
+  currency: "Devise",
+  passengers: "Passagers",
+  outboundDuration: "Durée totale aller",
+  inboundDuration: "Durée totale retour",
+  stops: "Escales (aller + retour)",
+  checkedBag: "Bagage soute inclus",
+  airlines: "Compagnie(s)",
+  outboundSchedule: "Horaires aller",
+  inboundSchedule: "Horaires retour",
+};
 
 export const FIELD_LABELS: Record<keyof ListingValues, string> = {
   title: "Titre",

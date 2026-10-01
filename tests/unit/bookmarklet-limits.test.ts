@@ -60,7 +60,7 @@ describe("favori sur une page Booking volumineuse", () => {
     const notes = JSON.parse(fields.truncated) as string[];
     expect(notes).toEqual([
       expect.stringMatching(/^JSON-LD : 3 blocs → 1, \d+ Ko → 1 Ko/),
-      expect.stringMatching(/^Texte : \d[\d ]+ → \d[\d ]+ caractères \(début de page \+ tableau des tarifs \(#hprt-table\)\)$/),
+      expect.stringMatching(/^Texte : \d[\d ]+ → \d[\d ]+ caractères \(début de page \+ zone repérée \(#hprt-table\)\)$/),
     ]);
   });
 

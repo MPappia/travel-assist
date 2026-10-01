@@ -99,3 +99,26 @@ export function parseStayDates(text: string, now: Date = new Date()): StayDates 
   }
   return null;
 }
+
+const FR_MONTH_TOKEN = String.raw`(janv|janvier|févr|février|fevr|fév|mars|avr|avril|mai|juin|juil|juillet|août|aout|sept|septembre|oct|octobre|nov|novembre|déc|décembre|dec)\.?`;
+
+/**
+ * Date seule (« ven. 19 mars », « lun. 12 juil. 2027 », « Fri, Mar 19, 2027 ») → YYYY-MM-DD.
+ * Sans année : prochaine occurrence à partir d'aujourd'hui, ou de `after` si fourni.
+ */
+export function parseSingleDate(text: string, now: Date = new Date(), after?: string): { date: string; inferredYear: boolean } | null {
+  const fr = text.match(new RegExp(String.raw`(\d{1,2})(?:er)?\s+${FR_MONTH_TOKEN}(?:\s+(\d{4}))?`, "i"));
+  if (fr) {
+    const month = frMonth(fr[2]);
+    if (month !== null) {
+      const [date, inferredYear] = withYear(month, Number(fr[1]), fr[3] ? Number(fr[3]) : null, now, after);
+      if (date) return { date, inferredYear };
+    }
+  }
+  const en = text.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.? (\d{1,2})(?:, (\d{4}))?/);
+  if (en) {
+    const [date, inferredYear] = withYear(enMonth(en[1])!, Number(en[2]), en[3] ? Number(en[3]) : null, now, after);
+    if (date) return { date, inferredYear };
+  }
+  return null;
+}

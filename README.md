@@ -13,6 +13,7 @@ Usage mono-utilisateur, sans authentification (MVP) : à faire tourner en local,
 - **Comparatifs** : critères pondérés (nombre, texte, oui/non, note 1–5 ; sens « plus haut / plus bas = mieux »), tableau côte à côte, score sur 100, meilleure valeur par critère, verdict en une phrase (« X arrive en tête… fait la différence sur… »), statuts option / retenu / écarté, création de la dépense d'un élément retenu.
 - **Aperçu de liens** : coller une URL d'annonce crée l'élément avec image, titre, description et domaine (Open Graph puis JSON-LD), sans jamais bloquer la saisie manuelle.
 - **Import d'annonces depuis le navigateur** : un favori (bookmarklet) ou le copier-coller du texte de la page alimente une page de vérification (prix, note, lits, chambres, nuits, annulation…) qui pré-remplit les critères du comparatif.
+- **Comparatif de vols** : modèle « Vols » (prix total, durées aller et retour, escales, bagage en soute, compagnies, horaires), détail des trajets sous chaque vol, badge « prix relevé il y a N jours » (orange au-delà de 3 jours), import d'une fiche de vol (Google Flights, Skyscanner, page générique) par le favori ou le copier-coller ; un vol retenu crée une dépense « Transport ».
 - **Itinéraire** : carte MapLibre, étapes par recherche d'adresse ou clic sur la carte, glisser-déposer, calcul OpenRouteService (distance et durée par tronçon et au total), voiture / vélo / à pied, vue jour par jour à partir des dates et nuits.
 
 ## Prérequis
@@ -78,6 +79,20 @@ Les réductions sont signalées discrètement sur la page d'import. Le serveur a
 `POST /import` ne crée rien : il stocke un import en attente (effacé après 24 h) et redirige vers `/import/[id]`. Là, vous vérifiez les champs extraits — chacun indique discrètement sa provenance (balises de partage, données structurées, texte de la page, IA) et, le cas échéant, une précision (chambre retenue, note convertie, date limite d'annulation) — puis vous choisissez le voyage et le comparatif (ou la création d'un comparatif « Logements »). Les critères correspondants (par nom, puis par unité sans ambiguïté) sont listés et décochables avant validation.
 
 **Copier-coller (secours, mobile)** : dans un comparatif, « Ajouter manuellement » → onglet « Coller le contenu de la page ». Sélectionnez tout le texte de l'annonce, copiez, collez : même extraction, même page de confirmation.
+
+### Vols (Google Flights, Skyscanner…)
+
+Le même favori et le même copier-coller importent une **fiche de vol**. Ouvrez d'abord le **détail du vol choisi** (sur Google Flights : cliquez sur le vol pour déplier ses segments ; sur Skyscanner : la page de détail d'un vol) : le favori cible ce panneau (sélecteurs par site dans `src/lib/bookmarklet/sites.ts`, avec le début de page), sinon il envoie le texte de la page, réduit comme pour les logements. Aucune page n'est récupérée par le serveur.
+
+L'extracteur « vol » est choisi par domaine (`google.*/travel/flights`, `skyscanner.*`, dans la même table de configuration que Booking), sinon par le type du comparatif où l'on colle le texte (« Vols »), sinon par le contenu (codes d'aéroport entre parenthèses, horaires, numéros de vol ou « Départ · … / Retour · … »). Il relève :
+
+- le **prix total** et sa devise — un prix « par personne » est multiplié par le nombre de passagers (précisé sous le champ) ; un prix dans une autre devise que l'euro n'est pas reporté dans le critère « Prix total (€) » mais conservé dans les notes ;
+- les **passagers** ; pour l'aller et le retour : aéroports, horaires (avec « +1 » si l'arrivée est le lendemain), durée totale, escales et leur durée, compagnies et numéros de vol ;
+- le **bagage en soute** inclus ou non.
+
+Comme pour les logements : étage déterministe d'abord, LLM facultatif pour les seuls champs « critères » restés vides (pas pour les segments), provenance affichée sous chaque champ, rien n'est créé avant validation. La page de vérification montre les trajets trouvés, laisse corriger prix, passagers, durées (« 14 h 05 »), escales (total aller + retour), bagage, compagnies et horaires, propose le comparatif « Vols » du voyage (ou sa création) et pré-remplit les notes avec le détail des segments. La **date de relevé du prix** est celle de l'envoi ; les segments sont enregistrés avec l'élément et affichés sous son titre.
+
+Les fixtures de vols sont pour l'instant **synthétiques** (`google-flights-fr`, `skyscanner-fr`, `flight-confirmation-en` dans `tests/fixtures/listings/`) : les sélecteurs et motifs Google Flights / Skyscanner sont à vérifier sur de vraies pages.
 
 ### Règles d'extraction
 
@@ -201,6 +216,7 @@ Aucune bibliothèque de scraping, de parsing HTML ou de navigateur headless ; au
 - **Favori d'import et CSP** : un site dont la politique de sécurité (CSP) est stricte peut bloquer le favori — en particulier sous **Firefox**, qui applique la CSP de la page aux bookmarklets — ou interdire l'envoi d'un formulaire vers un autre domaine (`form-action`, dans tous les navigateurs ; le favori affiche alors un message). Dans ces cas, utilisez **le copier-coller**.
 - Si `APP_URL` est en `http://` sur une autre adresse que `localhost`, le navigateur avertit qu'un formulaire est envoyé depuis une page https vers une adresse non sécurisée.
 - **Extraction d'annonces** : heuristiques, à vérifier à chaque import. Le prix dépend des dates et voyageurs saisis sur le site ; seuls les montants en euros sont reconnus ; une page longue est réduite au début de page et à la zone des tarifs (si cette zone n'est pas repérée, seuls les 30 000 premiers caractères sont gardés) ; les sélecteurs Booking n'ont pas encore été vérifiés sur le HTML réel ; l'année des dates est déduite quand elle manque ; la distance au centre n'est jamais extraite. Les motifs suivent la mise en page actuelle des sites et devront évoluer avec elle — les fixtures réelles servent de garde-fou.
+- **Vols** : sélecteurs et motifs établis sur des pages synthétiques ; Google Flights et Skyscanner changent souvent leur mise en page et peuvent bloquer le favori par leur CSP (copier-coller alors). Les horaires sont en heure locale des aéroports, sans fuseau ; les durées viennent de la page (pas de calcul entre fuseaux). Le prix relevé vieillit vite : le badge le rappelle, mais rien n'est actualisé automatiquement.
 - `POST /import` accepte des envois de n'importe quel site (c'est son rôle) : rien n'est créé sans confirmation, la taille est bornée et 50 imports au plus restent en attente.
 - Les images d'aperçu sont chargées directement depuis le site d'origine (`referrerPolicy="no-referrer"`) ; certaines peuvent être refusées (une icône les remplace) et ce chargement révèle votre adresse IP à ce site.
 - **Services gratuits** : ORS limite le nombre de requêtes (par minute et par jour), à 50 étapes par itinéraire et à une distance maximale par trajet ; Photon public est en « usage raisonnable ». Le cache limite les appels, mais un quota atteint affiche un message et il faut patienter. Carte, géocodage et itinéraire nécessitent une connexion Internet.

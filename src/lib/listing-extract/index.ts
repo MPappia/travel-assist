@@ -3,7 +3,10 @@
 import { nightsBetween } from "@/lib/listing-extract/dates";
 import { round } from "@/lib/listing-extract/numbers";
 import { cleanDocumentTitle, extractFromJsonLd, extractFromMeta, httpUrl } from "@/lib/listing-extract/structured";
+import { extractFlightFromText, looksLikeFlight } from "@/lib/listing-extract/flight";
 import { extractFromText } from "@/lib/listing-extract/text";
+import { matchSite } from "@/lib/bookmarklet/shared";
+import { SITE_CONFIGS, type ListingKind } from "@/lib/bookmarklet/sites";
 import {
   FIELD_KEYS,
   fillMissing,
@@ -35,7 +38,42 @@ export function finalizeFields(fields: ListingFields): ListingFields {
   return result;
 }
 
+/** Choix de l'extracteur : configuration du site, sinon indice (comparatif d'origine), sinon contenu. */
+export function detectListingKind(source: ListingSource): ListingKind {
+  if (source.url) {
+    try {
+      const url = new URL(source.url);
+      const site = matchSite(url.hostname, url.pathname, SITE_CONFIGS);
+      if (site) return site.kind;
+    } catch {
+      // URL invalide : on continue
+    }
+  }
+  if (source.kindHint) return source.kindHint;
+  return source.text && looksLikeFlight(source.text) ? "flight" : "lodging";
+}
+
 export function extractListing(source: ListingSource, options: { now?: Date } = {}): Omit<ListingExtraction, "llm"> {
+  if (detectListingKind(source) === "flight") {
+    let domain: string | null = null;
+    try {
+      domain = source.url ? new URL(source.url).hostname.replace(/^www\./, "") : null;
+    } catch {
+      domain = null;
+    }
+    return {
+      kind: "flight",
+      fields: {},
+      flight: extractFlightFromText(source.text ?? "", options),
+      images: [],
+      siteName: source.meta?.["og:site_name"]?.trim() || null,
+      domain,
+    };
+  }
+  return extractLodging(source, options);
+}
+
+function extractLodging(source: ListingSource, options: { now?: Date }): Omit<ListingExtraction, "llm"> {
   const baseUrl = source.url ?? null;
   const fields: ListingFields = {};
   merge(fields, extractFromMeta(source.meta ?? {}, baseUrl));
@@ -58,7 +96,7 @@ export function extractListing(source: ListingSource, options: { now?: Date } = 
     domain = null;
   }
   const siteName = source.meta?.["og:site_name"]?.trim() || null;
-  return { fields: finalizeFields(fields), images, siteName, domain };
+  return { kind: "lodging", fields: finalizeFields(fields), images, siteName, domain };
 }
 
 /** Champs encore vides après l'étage déterministe. */

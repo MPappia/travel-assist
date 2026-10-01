@@ -1,0 +1,47 @@
+FIXTURE SYNTHÉTIQUE — texte plausible imitant le détail d'un vol sur Google Flights (fr), en attendant une page réelle.
+Vols
+Aller-retour
+2
+Économique
+Paris
+Tokyo
+ven. 19 mars
+mar. 30 mars
+Meilleurs vols
+Les prix incluent les taxes et frais obligatoires pour 2 adultes.
+Départ · ven. 19 mars
+10:05 – 08:10+1
+Finnair
+14 h 05
+1 escale
+3 h 10 HEL
+1 248 €
+aller-retour
+10:05
+Aéroport Paris-Charles de Gaulle (CDG)
+Durée du trajet : 2 h 55
+14:00
+Aéroport d'Helsinki-Vantaa (HEL)
+Finnair · Économique · Airbus A321 · AY 1572
+Escale de 3 h 10 · Helsinki (HEL)
+17:10
+Aéroport d'Helsinki-Vantaa (HEL)
+Durée du trajet : 8 h 00
+08:10+1
+Aéroport international de Narita (NRT)
+Finnair · Économique · Airbus A350 · AY 73
+Retour · mar. 30 mars
+11:00 – 17:45
+Japan Airlines
+14 h 45
+Direct
+11:00
+Aéroport international de Narita (NRT)
+Durée du trajet : 14 h 45
+17:45
+Aéroport Paris-Charles de Gaulle (CDG)
+Japan Airlines · Économique · Boeing 787 · JL 45
+1 bagage cabine inclus
+Bagage en soute : frais supplémentaires
+Autres vols
+07:30 – 06:55+1 Lufthansa 15 h 25 1 escale 1 310 €

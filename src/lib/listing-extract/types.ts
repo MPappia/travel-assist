@@ -67,12 +67,17 @@ export interface ListingSource {
   text?: string | null;
   /** Réductions appliquées aux données (par le favori ou le serveur), affichées sur la page d'import. */
   warnings?: string[];
+  /** Indice de type (ex. copier-coller depuis un comparatif « Vols »). */
+  kindHint?: "lodging" | "flight";
 }
 
 export type LlmStatus = "disabled" | "skipped" | "ok" | "failed";
 
 export interface ListingExtraction {
+  /** Extracteur utilisé : logement (champs `fields`) ou vol (champs `flight`). */
+  kind: "lodging" | "flight";
   fields: ListingFields;
+  flight?: import("@/lib/listing-extract/flight").FlightFields;
   /** Images candidates (la première est proposée par défaut). */
   images: string[];
   siteName: string | null;

@@ -1,9 +1,10 @@
 import "server-only";
 
 import { extractListing, finalizeFields, missingFields } from "@/lib/listing-extract";
-import { applyLlmValues } from "@/lib/listing-extract/llm";
+import { finalizeFlightFields, FLIGHT_FIELD_KEYS } from "@/lib/listing-extract/flight";
+import { applyFlightLlmValues, applyLlmValues } from "@/lib/listing-extract/llm";
 import type { ListingExtraction, ListingSource } from "@/lib/listing-extract/types";
-import { callListingLlm, getLlmConfig, type LlmConfig } from "@/server/listing-llm";
+import { callFlightLlm, callListingLlm, getLlmConfig, type LlmConfig } from "@/server/listing-llm";
 
 /** Extraction complète : étage déterministe puis, si configuré et utile, étage LLM. */
 export async function runListingExtraction(
@@ -13,6 +14,27 @@ export async function runListingExtraction(
   const base = extractListing(source, { now: options.now });
   const llm = options.llm === undefined ? getLlmConfig() : options.llm;
   if (!llm) return { ...base, llm: { status: "disabled" } };
+
+  if (base.kind === "flight") {
+    const flight = base.flight ?? {};
+    // Les trajets détaillés ne se demandent pas au LLM : seulement les champs « critères » plats.
+    // Un aller simple reconnu n'a pas de champs « retour » à chercher.
+    const oneWay = flight.outbound !== undefined && flight.inbound === undefined;
+    const missingFlight = FLIGHT_FIELD_KEYS.filter(
+      (k) =>
+        k !== "outbound" &&
+        k !== "inbound" &&
+        !(oneWay && (k === "inboundDuration" || k === "inboundSchedule")) &&
+        flight[k] === undefined,
+    );
+    if (missingFlight.length === 0 || !source.text?.trim()) return { ...base, llm: { status: "skipped" } };
+    const result = await callFlightLlm(llm, { text: source.text, url: source.url, missing: missingFlight }, options);
+    if (!result.ok) return { ...base, llm: { status: "failed", message: result.message } };
+    const wanted = Object.fromEntries(
+      Object.entries(result.values).filter(([key]) => (missingFlight as string[]).includes(key)),
+    ) as typeof result.values;
+    return { ...base, flight: finalizeFlightFields(applyFlightLlmValues(flight, wanted)), llm: { status: "ok" } };
+  }
 
   const missing = missingFields(base.fields);
   if (missing.length === 0 || !source.text?.trim()) return { ...base, llm: { status: "skipped" } };

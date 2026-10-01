@@ -1,22 +1,21 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangleIcon, ExternalLinkIcon, ImageOffIcon, Loader2Icon, SparklesIcon } from "lucide-react";
+import { AlertTriangleIcon, ExternalLinkIcon, ImageOffIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { FormField } from "@/components/form-field";
+import { CriteriaPrefill, hintFor, ImportWarnings, LlmStatus, NoTripCard } from "@/components/import/import-parts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { presetByKey } from "@/lib/domain/comparison-presets";
-import { formatCriterionValue } from "@/lib/domain/criteria-values";
 import { formatDate, nightsBetween } from "@/lib/format";
 import {
+  defaultComparisonFor,
   FIELD_LABELS,
   mapListingToCriteria,
   MAPPABLE_FIELDS,
@@ -25,18 +24,11 @@ import {
   type MappableField,
   type MappableValues,
 } from "@/lib/listing-extract/criteria-mapping";
-import type { Field, FieldKey, FieldSource, ListingExtraction } from "@/lib/listing-extract/types";
+import type { Field, FieldKey, ListingExtraction } from "@/lib/listing-extract/types";
 import { cn } from "@/lib/utils";
 import type { FieldErrors } from "@/lib/validation";
 import { confirmImport, discardImport } from "@/server/actions/imports";
 import type { ImportTarget } from "@/server/queries";
-
-const SOURCE_LABELS: Record<FieldSource, string> = {
-  og: "balises de partage",
-  jsonld: "données structurées",
-  regex: "texte de la page",
-  llm: "IA — à vérifier",
-};
 
 type EditableKey = Exclude<FieldKey, "checkIn" | "checkOut" | "image">;
 const NUMBER_FIELDS: EditableKey[] = ["totalPrice", "pricePerNight", "nights", "rating", "reviewCount", "beds", "bedrooms", "guests"];
@@ -149,23 +141,7 @@ export function ImportForm({
     });
   }
 
-  if (targets.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Aucun voyage</CardTitle>
-          <CardDescription>
-            Créez d&apos;abord un voyage, puis revenez sur cette page (l&apos;import reste disponible 24 h).
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild>
-            <Link href="/">Créer un voyage</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  if (targets.length === 0) return <NoTripCard />;
 
   const fieldProps = (key: EditableKey) => ({
     label: FIELD_LABELS[key],
@@ -193,16 +169,7 @@ export function ImportForm({
             )}
             <LlmStatus status={extraction.llm} />
           </CardDescription>
-          {warnings.length > 0 && (
-            <details className="text-muted-foreground text-xs" data-testid="import-warnings">
-              <summary className="cursor-pointer">Page volumineuse : données réduites avant analyse</summary>
-              <ul className="mt-1 list-disc space-y-0.5 pl-5">
-                {warnings.map((w) => (
-                  <li key={w}>{w}</li>
-                ))}
-              </ul>
-            </details>
-          )}
+          <ImportWarnings warnings={warnings} />
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4">
           <FormField {...fieldProps("title")}>
@@ -290,8 +257,7 @@ export function ImportForm({
                 value={tripId}
                 onChange={(e) => {
                   setTripId(e.target.value);
-                  const next = targets.find((t) => t.id === e.target.value);
-                  setComparisonId(next?.comparisons.find((c) => /logement/i.test(c.name))?.id ?? NEW_COMPARISON);
+                  setComparisonId(defaultComparisonFor("lodging", targets.find((t) => t.id === e.target.value)?.comparisons));
                 }}
               >
                 {targets.map((t) => (
@@ -313,52 +279,19 @@ export function ImportForm({
             </FormField>
           </div>
 
-          <div className="grid grid-cols-1 gap-2" data-testid="criteria-prefill">
-            <p className="text-sm font-medium">Critères pré-remplis</p>
-            {matches.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Aucun critère du comparatif ne correspond aux informations trouvées.</p>
-            ) : (
-              <ul className="grid gap-2">
-                {matches.map((match) => {
-                  const id = `apply-${match.field}`;
-                  const display = formatCriterionValue(
-                    match.criterion.type,
-                    {
-                      numberValue: typeof match.value === "number" ? match.value : null,
-                      textValue: typeof match.value === "string" ? match.value : null,
-                      boolValue: typeof match.value === "boolean" ? match.value : null,
-                    },
-                    match.criterion.unit,
-                  );
-                  return (
-                    <li key={match.field} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        id={id}
-                        checked={!rejected.has(match.field)}
-                        onCheckedChange={(checked) =>
-                          setRejected((prev) => {
-                            const next = new Set(prev);
-                            if (checked === true) next.delete(match.field);
-                            else next.add(match.field);
-                            return next;
-                          })
-                        }
-                      />
-                      <label htmlFor={id}>
-                        « {match.criterion.name} » ← <span className="font-medium">{display}</span>
-                        <span className="text-muted-foreground text-xs"> (correspondance par {match.matchedBy})</span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            {unmatched.length > 0 && (
-              <p className="text-muted-foreground text-xs">
-                Sans critère correspondant (conservé dans les notes si utile) : {unmatched.map((f) => FIELD_LABELS[f]).join(", ")}.
-              </p>
-            )}
-          </div>
+          <CriteriaPrefill
+            matches={matches}
+            rejected={rejected}
+            onToggle={(field, applied) =>
+              setRejected((prev) => {
+                const next = new Set(prev);
+                if (applied) next.delete(field);
+                else next.add(field);
+                return next;
+              })
+            }
+            unmatchedLabels={unmatched.map((f) => FIELD_LABELS[f])}
+          />
 
           <FormField label="Notes de l'élément" htmlFor="import-notes">
             <Textarea id="import-notes" name="notes" defaultValue={defaultNotes} rows={4} />
@@ -388,24 +321,6 @@ export function ImportForm({
       </div>
     </form>
   );
-}
-
-function hintFor(field: Field<unknown> | undefined): string | undefined {
-  if (!field) return undefined;
-  return `Source : ${SOURCE_LABELS[field.source]}${field.note ? ` · ${field.note}` : ""}`;
-}
-
-function LlmStatus({ status }: { status: ListingExtraction["llm"] }) {
-  if (status.status === "ok") {
-    return (
-      <span className="flex items-center gap-1">
-        <SparklesIcon className="size-3.5" />
-        Complété par IA (champs marqués « IA — à vérifier »)
-      </span>
-    );
-  }
-  if (status.status === "failed") return <span>Analyse IA indisponible ({status.message}) : extraction classique uniquement.</span>;
-  return null;
 }
 
 function ImageChoice({ src, selected, onSelect }: { src: string; selected: boolean; onSelect: () => void }) {
