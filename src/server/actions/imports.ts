@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { db } from "@/lib/db";
-import { COMPARISON_PRESETS } from "@/lib/domain/comparison-presets";
+import { presetByKey } from "@/lib/domain/comparison-presets";
 import { parseCriterionInput } from "@/lib/domain/criteria-values";
 import {
   mapListingToCriteria,
@@ -36,12 +36,13 @@ export async function confirmImport(
 
   let comparisonId = input.comparisonId;
   if (comparisonId === NEW_COMPARISON) {
-    const preset = COMPARISON_PRESETS.find((p) => p.key === "lodging")!;
+    const preset = presetByKey("lodging");
     const created = await db.comparison.create({
       data: {
         tripId: trip.id,
         name: preset.name,
-        expenseCategory: "ACCOMMODATION",
+        kind: preset.kind,
+        expenseCategory: preset.expenseCategory,
         criteria: { create: preset.criteria.map((c, position) => ({ ...c, position })) },
       },
     });

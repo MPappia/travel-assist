@@ -21,7 +21,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useFormAction } from "@/hooks/use-form-action";
 import { toInputValue, type StoredCriterionValue } from "@/lib/domain/criteria-values";
-import { CRITERION_DIRECTION_LABELS, type CriterionDirectionValue, type CriterionTypeValue } from "@/lib/labels";
+import { toDateKey, todayKey } from "@/lib/format";
+import {
+  CRITERION_DIRECTION_LABELS,
+  type ComparisonKindValue,
+  type CriterionDirectionValue,
+  type CriterionTypeValue,
+} from "@/lib/labels";
 import { createComparisonItem, updateComparisonItem } from "@/server/actions/comparisons";
 
 export interface ItemFormCriterion {
@@ -40,6 +46,8 @@ export interface ItemFormValues {
   previewDescription?: string | null;
   previewImage?: string | null;
   values: (StoredCriterionValue & { criterionId: string })[];
+  /** Vols : date du relevé du prix. */
+  priceCapturedAt?: Date | null;
 }
 
 export function CriterionValueInput({
@@ -96,8 +104,10 @@ export function ItemFormDialog({
   trigger,
   open: controlledOpen,
   onOpenChange,
+  kind = "GENERIC",
 }: {
   comparisonId: string;
+  kind?: ComparisonKindValue;
   criteria: ItemFormCriterion[];
   item?: ItemFormValues;
   trigger?: React.ReactNode;
@@ -123,6 +133,21 @@ export function ItemFormDialog({
       <FormField label="Lien (facultatif)" htmlFor="item-url" error={errors.url}>
         <Input id="item-url" name="url" type="url" defaultValue={item?.url ?? ""} placeholder="https://…" />
       </FormField>
+      {kind === "FLIGHTS" && (
+        <FormField
+          label="Prix relevé le"
+          htmlFor="item-price-captured"
+          error={errors.priceCapturedAt}
+          hint="Les prix des vols changent vite : au-delà de 3 jours, le badge passe en orange."
+        >
+          <Input
+            id="item-price-captured"
+            name="priceCapturedAt"
+            type="date"
+            defaultValue={item ? toDateKey(item.priceCapturedAt) : todayKey()}
+          />
+        </FormField>
+      )}
       {criteria.length > 0 && (
         <fieldset className="grid grid-cols-1 gap-3 rounded-lg border p-3">
           <legend className="px-1 text-sm font-medium">Critères</legend>

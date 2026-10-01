@@ -59,6 +59,13 @@ enum ItemStatus {
   REJECTED
 }
 
+// Type de comparatif : il active les affichages et l'extraction spécifiques (vols : segments, date de relevé…).
+enum ComparisonKind {
+  GENERIC
+  LODGING
+  FLIGHTS
+}
+
 enum PreviewStatus {
   NONE
   OK
@@ -126,6 +133,7 @@ model Comparison {
   name            String
   // Catégorie budgétaire utilisée quand un élément retenu crée une dépense.
   expenseCategory ExpenseCategory  @default(ACCOMMODATION)
+  kind            ComparisonKind   @default(GENERIC)
   createdAt       DateTime         @default(now())
   criteria        Criterion[]
   items           ComparisonItem[]
@@ -165,6 +173,9 @@ model ComparisonItem {
   previewDomain      String?
   previewError       String?
   previewFetchedAt   DateTime?
+  // Vols : date à laquelle le prix a été relevé, et détails (segments, passagers…) en JSON validé par zod
+  priceCapturedAt    DateTime?
+  flightDetails      String?
   createdAt          DateTime         @default(now())
   values             CriterionValue[]
   expense            Expense?

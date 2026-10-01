@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { parseDateInput, parseMoneyToCents } from "@/lib/format";
 import {
+  COMPARISON_KINDS,
   CRITERION_DIRECTIONS,
   CRITERION_TYPES,
   EXPENSE_CATEGORIES,
@@ -115,6 +116,8 @@ export type CriterionInput = z.output<typeof criterionInputSchema>;
 export const comparisonSchema = z.object({
   name: z.string().trim().min(1, "Le nom est obligatoire").max(120),
   expenseCategory: z.enum(EXPENSE_CATEGORIES).default("ACCOMMODATION"),
+  /** Fixé à la création par le modèle choisi ; absent = inchangé (édition) ou générique (création). */
+  kind: z.enum(COMPARISON_KINDS).optional(),
   criteria: z.array(criterionInputSchema).max(30, "30 critères maximum"),
 });
 export type ComparisonInput = z.output<typeof comparisonSchema>;
@@ -150,6 +153,11 @@ export const comparisonItemSchema = z.object({
   // Champs d'aperçu corrigibles à la main (facultatifs dans le formulaire).
   previewDescription: z.string().trim().max(1000).optional(),
   previewImage: optionalHttpUrl.optional(),
+  // Vols : date du relevé du prix (« YYYY-MM-DD » ; vide = effacer ; absent = inchangé)
+  priceCapturedAt: z
+    .string()
+    .optional()
+    .refine((v) => !v || parseDateInput(v) !== null, "Date invalide"),
 });
 
 export const itemUrlSchema = z.object({

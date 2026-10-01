@@ -72,3 +72,6 @@ export const ROUTE_MODE_LABELS: Record<RouteModeValue, string> = {
   CYCLING: "Vélo",
   WALKING: "À pied",
 };
+
+export const COMPARISON_KINDS = ["GENERIC", "LODGING", "FLIGHTS"] as const;
+export type ComparisonKindValue = (typeof COMPARISON_KINDS)[number];

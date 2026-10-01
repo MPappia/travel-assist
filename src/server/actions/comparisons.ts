@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { db } from "@/lib/db";
+import { parseDateInput } from "@/lib/format";
 import { parseCriterionInput, type StoredCriterionValue } from "@/lib/domain/criteria-values";
 import type { ItemStatusValue } from "@/lib/labels";
 import { getLinkPreview, type LinkPreviewResult } from "@/server/link-preview";
@@ -33,12 +34,13 @@ async function tripIdOfComparison(comparisonId: string) {
 export async function createComparison(tripId: string, input: unknown): Promise<ActionResult<{ id: string }>> {
   const parsed = comparisonSchema.safeParse(input);
   if (!parsed.success) return fail("Comparatif invalide", flattenErrors(parsed.error));
-  const { name, expenseCategory, criteria } = parsed.data;
+  const { name, expenseCategory, kind, criteria } = parsed.data;
   const comparison = await db.comparison.create({
     data: {
       tripId,
       name,
       expenseCategory,
+      kind: kind ?? "GENERIC",
       criteria: {
         create: criteria.map((c, position) => ({
           name: c.name,
@@ -141,9 +143,10 @@ function previewData(preview: LinkPreviewResult) {
 
 /** Données d'item issues du formulaire : les champs d'aperçu ne sont modifiés que s'ils sont présents. */
 function itemData(data: ReturnType<typeof comparisonItemSchema.parse>) {
-  const { previewDescription, previewImage, ...rest } = data;
+  const { previewDescription, previewImage, priceCapturedAt, ...rest } = data;
   return {
     ...rest,
+    ...(priceCapturedAt !== undefined && { priceCapturedAt: parseDateInput(priceCapturedAt) }),
     ...(previewDescription !== undefined && { previewDescription: previewDescription || null }),
     ...(previewImage !== undefined && { previewImage }),
   };

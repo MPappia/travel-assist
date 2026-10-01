@@ -1,5 +1,6 @@
 // Conversion des valeurs de critères entre la saisie, la base et le moteur de score.
 import type { CriterionKind, CriterionRawValue } from "@/lib/domain/scoring";
+import { formatDuration } from "@/lib/format";
 
 export interface StoredCriterionValue {
   numberValue: number | null;
@@ -60,6 +61,8 @@ export function formatCriterionValue(type: CriterionKind, stored: StoredCriterio
   if (typeof raw === "number") {
     const formatted = raw.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
     if (type === "RATING") return `${formatted}/5`;
+    // Durées saisies en minutes (vols) : affichées « 13 h 05 »
+    if (unit === "min") return formatDuration(raw * 60);
     return unit ? `${formatted} ${unit}` : formatted;
   }
   return raw;

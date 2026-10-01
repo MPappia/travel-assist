@@ -28,6 +28,7 @@ import {
   EXPENSE_CATEGORIES,
   EXPENSE_CATEGORY_LABELS,
   type CriterionDirectionValue,
+  type ComparisonKindValue,
   type CriterionTypeValue,
   type ExpenseCategoryValue,
 } from "@/lib/labels";
@@ -75,7 +76,10 @@ export function ComparisonFormDialog({
   const [errors, setErrors] = useState<FieldErrors>({});
   const initialPreset = COMPARISON_PRESETS[0];
   const [name, setName] = useState(comparison?.name ?? initialPreset.name);
-  const [category, setCategory] = useState<ExpenseCategoryValue>(comparison?.expenseCategory ?? "ACCOMMODATION");
+  const [category, setCategory] = useState<ExpenseCategoryValue>(comparison?.expenseCategory ?? initialPreset.expenseCategory);
+  // Le type (logements, vols…) est fixé à la création par le modèle choisi.
+  const [kind, setKind] = useState<ComparisonKindValue>(initialPreset.kind);
+  const [presetKey, setPresetKey] = useState(initialPreset.key);
   const [criteria, setCriteria] = useState<CriterionDraft[]>(() =>
     draftsFrom(comparison?.criteria ?? initialPreset.criteria),
   );
@@ -83,7 +87,9 @@ export function ComparisonFormDialog({
   function reset() {
     setErrors({});
     setName(comparison?.name ?? initialPreset.name);
-    setCategory(comparison?.expenseCategory ?? "ACCOMMODATION");
+    setCategory(comparison?.expenseCategory ?? initialPreset.expenseCategory);
+    setKind(initialPreset.kind);
+    setPresetKey(initialPreset.key);
     setCriteria(draftsFrom(comparison?.criteria ?? initialPreset.criteria));
   }
 
@@ -92,6 +98,9 @@ export function ComparisonFormDialog({
     if (!preset) return;
     setName(preset.name);
     setCriteria(draftsFrom(preset.criteria));
+    setCategory(preset.expenseCategory);
+    setKind(preset.kind);
+    setPresetKey(preset.key);
   }
 
   function update(key: string, patch: Partial<CriterionDraft>) {
@@ -113,6 +122,7 @@ export function ComparisonFormDialog({
     const payload = {
       name,
       expenseCategory: category,
+      ...(comparison ? {} : { kind }),
       criteria: criteria.map(({ id, name, type, weight, direction, unit }) => ({
         id,
         name,
@@ -156,7 +166,14 @@ export function ComparisonFormDialog({
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-muted-foreground">Modèle :</span>
               {COMPARISON_PRESETS.map((preset) => (
-                <Button key={preset.key} type="button" variant="outline" size="sm" onClick={() => applyPreset(preset.key)}>
+                <Button
+                  key={preset.key}
+                  type="button"
+                  variant={presetKey === preset.key ? "secondary" : "outline"}
+                  size="sm"
+                  aria-pressed={presetKey === preset.key}
+                  onClick={() => applyPreset(preset.key)}
+                >
                   {preset.label}
                 </Button>
               ))}

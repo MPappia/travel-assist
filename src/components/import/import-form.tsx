@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import { COMPARISON_PRESETS } from "@/lib/domain/comparison-presets";
+import { presetByKey } from "@/lib/domain/comparison-presets";
 import { formatCriterionValue } from "@/lib/domain/criteria-values";
 import { formatDate, nightsBetween } from "@/lib/format";
 import {
@@ -102,7 +102,7 @@ export function ImportForm({
   // Calculs légers : refaits à chaque rendu.
   const criteria: MappableCriterion[] =
     comparisonId === NEW_COMPARISON
-      ? COMPARISON_PRESETS.find((p) => p.key === "lodging")!.criteria.map((c, i) => ({ ...c, id: `preset-${i}` }))
+      ? presetByKey("lodging").criteria.map((c, i) => ({ ...c, id: `preset-${i}` }))
       : (comparison?.criteria ?? []);
 
   const mappable: MappableValues = (() => {

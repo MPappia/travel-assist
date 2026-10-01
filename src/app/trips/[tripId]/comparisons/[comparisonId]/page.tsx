@@ -28,6 +28,7 @@ export default async function ComparisonPage({ params }: PageProps<"/trips/[trip
       </div>
       <ComparisonTable
         comparisonId={comparison.id}
+        kind={comparison.kind}
         expenseCategory={comparison.expenseCategory}
         criteria={comparison.criteria}
         items={comparison.items}

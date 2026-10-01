@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { ItemExpenseDialog } from "@/components/comparisons/item-expense-dialog";
 import { ItemFormDialog, type ItemFormCriterion, type ItemFormValues } from "@/components/comparisons/item-form-dialog";
 import { ComparisonVerdict } from "@/components/comparisons/comparison-verdict";
+import { FlightSummary } from "@/components/comparisons/flight-summary";
 import { LinkPreviewCard, type PreviewFields } from "@/components/comparisons/link-preview-card";
 import { PasteLinkForm } from "@/components/comparisons/paste-link-form";
 import { ConfirmDialog } from "@/components/confirm-delete-button";
@@ -41,6 +42,7 @@ import {
   EXPENSE_CATEGORY_LABELS,
   EXPENSE_STATUS_LABELS,
   ITEM_STATUS_LABELS,
+  type ComparisonKindValue,
   type ExpenseCategoryValue,
   type ExpenseStatusValue,
   type ItemStatusValue,
@@ -51,10 +53,13 @@ import { deleteComparisonItem, setComparisonItemStatus } from "@/server/actions/
 export interface TableItem extends Omit<ItemFormValues, "previewDescription" | "previewImage">, PreviewFields {
   status: ItemStatusValue;
   expense: { id: string; amountCents: number; status: ExpenseStatusValue } | null;
+  priceCapturedAt: Date | null;
+  flightDetails: string | null;
 }
 
 export interface ComparisonTableProps {
   comparisonId: string;
+  kind: ComparisonKindValue;
   expenseCategory: ExpenseCategoryValue;
   criteria: (ViewCriterion & ItemFormCriterion)[];
   items: TableItem[];
@@ -66,7 +71,7 @@ const STATUS_VARIANT: Record<ItemStatusValue, React.ComponentProps<typeof Badge>
   REJECTED: "secondary",
 };
 
-export function ComparisonTable({ comparisonId, expenseCategory, criteria, items }: ComparisonTableProps) {
+export function ComparisonTable({ comparisonId, kind, expenseCategory, criteria, items }: ComparisonTableProps) {
   const [sortByScore, setSortByScore] = useState(true);
   const [editing, setEditing] = useState<TableItem | null>(null);
   const [deleting, setDeleting] = useState<TableItem | null>(null);
@@ -88,6 +93,7 @@ export function ComparisonTable({ comparisonId, expenseCategory, criteria, items
   const addButton = (
     <ItemFormDialog
       comparisonId={comparisonId}
+      kind={kind}
       criteria={criteria}
       trigger={
         <Button variant="outline">
@@ -214,6 +220,9 @@ export function ComparisonTable({ comparisonId, expenseCategory, criteria, items
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+                    {kind === "FLIGHTS" && (
+                      <FlightSummary flightDetails={col.item.flightDetails} priceCapturedAt={col.item.priceCapturedAt} />
+                    )}
                     <LinkPreviewCard item={col.item} />
                   </th>
                 ))}
@@ -349,6 +358,7 @@ export function ComparisonTable({ comparisonId, expenseCategory, criteria, items
         <ItemFormDialog
           key={editing.id}
           comparisonId={comparisonId}
+          kind={kind}
           criteria={criteria}
           item={editing}
           open
