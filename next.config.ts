@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // esbuild (binaire natif) sert à minifier le bookmarklet côté serveur : il ne doit pas être bundlé.
+  serverExternalPackages: ["esbuild"],
 };
 
 export default nextConfig;
