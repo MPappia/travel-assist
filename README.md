@@ -120,7 +120,7 @@ Le serveur doit accepter `response_format` de type `json_schema` (versions réce
 
 - **Vitest** (`tests/unit`) : formatage, tâches, budget, validation, **scoring** (module pur), vue comparatif, parseur d'aperçu (Open Graph / JSON-LD), garde anti-SSRF, téléchargement HTML contre un serveur HTTP local (redirections, gzip, encodage, taille, délai), OpenRouteService (requête, réponse, erreurs), Photon, plan jour par jour, service d'itinéraire avec `fetch` simulé (clé manquante, cache, quota).
 - Import d'annonces : bookmarklet exécuté dans jsdom (code source, version minifiée générée, mode diagnostic, respect des limites sur une page de structure Booking construite à partir du texte réel), réduction du texte et élagage du JSON-LD, troncature serveur au lieu du rejet, extraction sur les fiches réelles Airbnb (en) et Booking (fr) fournies et sur des fiches synthétiques clairement marquées (Abritel, Airbnb fr, page HTML avec og/JSON-LD), étage LLM avec `fetch` simulé (réussite, délai dépassé, erreur), validation du payload, correspondance avec les critères.
-- **Playwright** (`tests/e2e`) : 8 tests.
+- **Playwright** (`tests/e2e`) : 9 tests.
   1. Créer un voyage, des tâches (retard, filtre, cocher, supprimer) et des dépenses (alerte de dépassement), vérifier le tableau de bord.
   2. Comparer 3 logements sur 5 critères, lire le verdict, écarter, retenir et créer la dépense.
   3. Coller un lien qui échoue (et une adresse locale refusée) : l'élément est créé et se complète à la main.
@@ -129,6 +129,7 @@ Le serveur doit accepter `response_format` de type `json_schema` (versions réce
   6. Envoi invalide (adresse non http) : renvoi vers l'aide, rien n'est créé.
   7. Copier-coller de la fiche Airbnb réelle jusqu'aux critères pré-remplis.
   8. Page d'annonce volumineuse (JSON-LD de plusieurs centaines de Ko, texte de plus de 100 000 caractères) importée sans rejet, réductions signalées.
+  9. Annonce importée sans note : score partiel, non pénalisé, signalé dans le tableau et le verdict.
 
   Les tests e2e utilisent une base dédiée (`prisma/e2e.db`, recréée à chaque lancement) et un **faux service Photon / ORS local** (`tests/e2e/mock-services.mjs`) : ils ne dépendent ni du réseau ni d'une clé. Le navigateur Chromium de Playwright 1.56 doit être installé (`npx playwright install chromium` si besoin).
 
@@ -158,7 +159,7 @@ Les mutations passent par des **server actions** (validées avec zod) ; les lect
 - **Score des comparatifs** (`src/lib/domain/scoring.ts`) :
   - nombre : normalisation min–max entre les éléments renseignés (une valeur unique ou des valeurs toutes égales valent 1) ;
   - note : échelle absolue (note − 1) / 4 ; oui/non : 1 / 0 ; sens « plus bas = mieux » : 1 − note ;
-  - texte : affiché, non noté ; valeur manquante : 0 sur ce critère ; un élément sans aucune valeur n'est pas classé ;
+  - texte : affiché, non noté ; **valeur manquante : le critère est ignoré pour cet élément, sans pénalité** — le score est alors « partiel », calculé sur les seuls critères renseignés (poids renormalisés) et signalé avec les critères manquants et la part du poids évaluée ; un élément sans aucune valeur n'est pas classé ;
   - score = Σ(poids × note) / Σ(poids) × 100. Les éléments **écartés** sont hors course (ni notés ni pris en compte dans la normalisation).
 - **Aperçu de liens** (`src/server/link-preview`) : `node:http(s)` sans dépendance, délai global de 8 s, au plus 1,5 Mo lus (après décompression), 4 redirections revalidées, HTML uniquement, User-Agent de navigateur standard, aucun cookie ni JavaScript exécuté. Anti-SSRF : http/https seulement, ports 80/443/8080/8443, pas d'identifiants dans l'URL, refus de `localhost` et de toutes les plages privées, réservées, de lien local, CGNAT, multicast et IPv4 mappées — vérifiées **sur les adresses réellement résolues au moment de la connexion** (fonction `lookup` personnalisée), ce qui couvre redirections et « DNS rebinding ». Résultat mis en cache en base 7 jours (1 h pour un échec) ; « Rafraîchir l'aperçu » contourne le cache.
 - **Géocodage : Photon** (komoot, données OpenStreetMap), conçu pour l'autocomplétion (Nominatim interdit cet usage). Debounce de 350 ms côté client avec 3 caractères minimum et annulation des requêtes obsolètes ; côté serveur, User-Agent identifiable, **1 requête/s au plus** et cache en base de 30 jours.
@@ -203,6 +204,7 @@ Aucune bibliothèque de scraping, de parsing HTML ou de navigateur headless ; au
 - `POST /import` accepte des envois de n'importe quel site (c'est son rôle) : rien n'est créé sans confirmation, la taille est bornée et 50 imports au plus restent en attente.
 - Les images d'aperçu sont chargées directement depuis le site d'origine (`referrerPolicy="no-referrer"`) ; certaines peuvent être refusées (une icône les remplace) et ce chargement révèle votre adresse IP à ce site.
 - **Services gratuits** : ORS limite le nombre de requêtes (par minute et par jour), à 50 étapes par itinéraire et à une distance maximale par trajet ; Photon public est en « usage raisonnable ». Le cache limite les appels, mais un quota atteint affiche un message et il faut patienter. Carte, géocodage et itinéraire nécessitent une connexion Internet.
+- Score partiel : un élément peu renseigné mais bon sur ses quelques critères peut passer devant un élément complet ; il est signalé « Score partiel » pour que la comparaison reste lisible.
 - Avec seulement deux éléments, la normalisation min–max donne mécaniquement 1 au meilleur et 0 à l'autre sur chaque critère numérique : les écarts de score paraissent plus marqués qu'avec trois éléments ou plus.
 - Durées ORS hors pauses et hors trafic.
 - Pas d'authentification ni de multi-utilisateur ; SQLite convient à un usage local.

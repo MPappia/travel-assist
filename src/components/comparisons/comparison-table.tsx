@@ -244,9 +244,13 @@ export function ComparisonTable({ comparisonId, expenseCategory, criteria, items
                           indicatorClassName={col.rank === 1 ? "bg-success" : undefined}
                         />
                         {col.missingCount > 0 && (
-                          <span className="text-warning text-xs">
-                            {col.missingCount} valeur{col.missingCount > 1 ? "s" : ""} manquante
-                            {col.missingCount > 1 ? "s" : ""}
+                          <span className="text-muted-foreground text-xs" data-testid="partial-score">
+                            <span className="text-warning font-medium">Score partiel</span> — sans{" "}
+                            {criteria
+                              .filter((c) => col.byCriterion[c.id]?.missing)
+                              .map((c) => c.name)
+                              .join(", ")}{" "}
+                            (non pénalisé, {Math.round(col.coverage * 100)} % du poids évalué)
                           </span>
                         )}
                       </div>

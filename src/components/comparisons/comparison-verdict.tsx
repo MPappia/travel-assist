@@ -14,6 +14,7 @@ export function ComparisonVerdict({
 }) {
   if (!explanation) return null;
   const winner = columns.find((c) => c.item.id === explanation.winnerId);
+  const runnerUp = explanation.runnerUpId ? columns.find((c) => c.item.id === explanation.runnerUpId) : undefined;
   if (!winner || winner.score === null) return null;
   const winnerTitle = titles.get(explanation.winnerId) ?? "";
   const runnerUpTitle = explanation.runnerUpId ? titles.get(explanation.runnerUpId) : null;
@@ -48,8 +49,11 @@ export function ComparisonVerdict({
             Moins bien que {runnerUpTitle} sur : {explanation.weaknesses.slice(0, 3).map(fmt).join(", ")}.
           </p>
         )}
-        {winner.missingCount > 0 && (
-          <p className="text-warning text-xs">Attention : certaines valeurs ne sont pas encore renseignées.</p>
+        {(winner.missingCount > 0 || (runnerUp && runnerUp.missingCount > 0)) && (
+          <p className="text-warning text-xs">
+            Score partiel : les critères non renseignés sont ignorés (sans pénalité). Complétez-les pour comparer à
+            armes égales.
+          </p>
         )}
       </div>
     </div>

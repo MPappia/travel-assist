@@ -76,12 +76,44 @@ describe("computeScores", () => {
     expect(r.items.every((s) => s.score === 100 && !s.byCriterion.x.isBest)).toBe(true);
   });
 
-  it("compte une valeur manquante comme 0", () => {
-    const r = computeScores(criteria, [...items, { id: "d", values: { prix: 600 } }]);
+  it("ne pénalise pas une valeur manquante : score partiel sur les critères renseignés", () => {
+    // d ne renseigne que la note (2/5) et l'annulation : ces deux critères seuls font son score.
+    const r = computeScores(criteria, [...items, { id: "d", values: { note: 3, annulation: true } }]);
     const d = r.items.find((s) => s.itemId === "d")!;
-    expect(d.missingCount).toBe(4);
-    expect(d.byCriterion.note).toMatchObject({ missing: true, points: 0 });
-    expect(d.score).toBe(Math.round((3 / 9) * 100));
+    expect(d.missingCount).toBe(3);
+    expect(d.byCriterion.prix).toMatchObject({ missing: true, points: 0, normalized: null });
+    // note (3−1)/4 = 0,5 × 2 ; annulation 1 × 1 → 2 / 3
+    expect(d.score).toBe(Math.round((2 / 3) * 100));
+    expect(d.coverage).toBeCloseTo(3 / 9);
+    // la somme des points de l'élément vaut son score
+    const points = Object.values(d.byCriterion).reduce((sum, c) => sum + c.points, 0);
+    expect(Math.round(points)).toBe(d.score);
+    // les éléments complets ont une couverture de 1 et des scores inchangés
+    const c = r.items.find((s) => s.itemId === "c")!;
+    expect(c.coverage).toBe(1);
+    expect(c.score).toBe(Math.round((7.5 / 9) * 100));
+  });
+
+  it("un élément sans une valeur n'est pas plus mal noté que son jumeau complet ayant une valeur moyenne", () => {
+    const twoCriteria: ScoringCriterion[] = [
+      { id: "prix", name: "Prix", type: "NUMBER", weight: 1, direction: "LOWER_IS_BETTER" },
+      { id: "note", name: "Note", type: "RATING", weight: 1, direction: "HIGHER_IS_BETTER" },
+    ];
+    const r = computeScores(twoCriteria, [
+      { id: "complet", values: { prix: 500, note: 3 } },
+      { id: "sans-note", values: { prix: 500 } },
+    ]);
+    const [complet, sansNote] = r.items;
+    expect(complet.score).toBe(75); // (1 + 0,5) / 2
+    expect(sansNote.score).toBe(100); // prix seul, au meilleur niveau
+    expect(sansNote.coverage).toBe(0.5);
+  });
+
+  it("explique la victoire sans compter les critères absents chez l'un des deux", () => {
+    const r = computeScores(criteria, [items[0], { id: "d", values: { prix: 600, couchages: 2 } }]);
+    const explanation = explainWinner(criteria, rankByScore(r.items))!;
+    const named = [...explanation.strengths, ...explanation.weaknesses].map((x) => x.criterionId);
+    expect(named.every((id) => id === "prix" || id === "couchages")).toBe(true);
   });
 
   it("donne la note maximale à une valeur unique, même en « plus bas = mieux »", () => {

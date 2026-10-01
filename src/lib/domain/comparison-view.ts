@@ -28,6 +28,8 @@ export interface ComparisonViewItem<T extends ViewItem> {
   score: number | null;
   rank: number | null;
   missingCount: number;
+  /** Part du poids total évaluée (1 = score complet). */
+  coverage: number;
   byCriterion: Record<string, CriterionScore | undefined>;
   valueByCriterion: Record<string, StoredCriterionValue | undefined>;
 }
@@ -68,6 +70,7 @@ export function buildComparisonView<T extends ViewItem>(
       score: s?.score ?? null,
       rank: rankById.get(item.id) ?? null,
       missingCount: s?.missingCount ?? 0,
+      coverage: s?.coverage ?? 0,
       byCriterion: s?.byCriterion ?? {},
       valueByCriterion: valueMaps.get(item.id) ?? {},
     };
