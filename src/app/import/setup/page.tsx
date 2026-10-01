@@ -9,7 +9,8 @@ export const metadata: Metadata = { title: "Importer une annonce" };
 export const dynamic = "force-dynamic";
 
 const ERRORS: Record<string, string> = {
-  "trop-volumineux": "La page envoyée est trop volumineuse. Utilisez le copier-coller du contenu de l'annonce.",
+  "trop-volumineux":
+    "La page envoyée dépasse 2 Mo, même après réduction. Utilisez le copier-coller : dans un comparatif, « Ajouter manuellement » → « Coller le contenu de la page ».",
   illisible: "Les données envoyées par le favori n'ont pas pu être lues. Réessayez, ou utilisez le copier-coller.",
   invalide: "Les données envoyées par le favori sont invalides. Réessayez, ou utilisez le copier-coller ; le favori de diagnostic (ci-dessous) affiche ce qui est envoyé.",
 };

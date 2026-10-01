@@ -12,7 +12,7 @@ import {
   NEW_COMPARISON,
   type MappableValues,
 } from "@/lib/listing-extract/criteria-mapping";
-import { pastedContentSchema } from "@/lib/listing-extract/payload";
+import { pastedContentSchema, reduceText } from "@/lib/listing-extract/payload";
 import { flattenErrors, formDataToObject, importConfirmSchema } from "@/lib/validation";
 import { createPendingImport, deletePendingImport, getPendingImport } from "@/server/pending-imports";
 
@@ -110,6 +110,12 @@ export async function discardImport(pendingId: string): Promise<ActionResult> {
 export async function createImportFromText(input: { text: string; url?: string }): Promise<ActionResult<{ id: string }>> {
   const parsed = pastedContentSchema.safeParse(input);
   if (!parsed.success) return fail("Contenu invalide", flattenErrors(parsed.error));
-  const pending = await createPendingImport("paste", { url: parsed.data.url || null, text: parsed.data.text });
+  // Même logique que le favori : début de page + zone des tarifs si le texte est trop long.
+  const reduced = reduceText(parsed.data.text.replace(/\r\n?/g, "\n"));
+  const pending = await createPendingImport("paste", {
+    url: parsed.data.url || null,
+    text: reduced.text,
+    warnings: reduced.warning ? [`${reduced.warning} (réduit par le serveur)`] : [],
+  });
   return ok({ id: pending.id });
 }

@@ -17,6 +17,11 @@ export const IMPORT_LIMITS = {
   text: 30_000,
   /** Notes de troncature transmises par le favori. */
   truncatedNotes: 20,
+  /**
+   * Plafond de sécurité du corps de requête (POST /import, copier-coller) : au-delà seulement, l'envoi
+   * est refusé ; en dessous, chaque champ trop long est tronqué avec un avertissement.
+   */
+  maxBodyBytes: 2_000_000,
 } as const;
 
 export type ImportLimits = typeof IMPORT_LIMITS;

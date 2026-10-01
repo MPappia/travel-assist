@@ -9,7 +9,7 @@ import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { MAX_TEXT_LENGTH } from "@/lib/listing-extract/payload";
+import { IMPORT_LIMITS } from "@/lib/bookmarklet/limits";
 import type { FieldErrors } from "@/lib/validation";
 import { createImportFromText } from "@/server/actions/imports";
 
@@ -23,7 +23,7 @@ export function PasteContentForm({ comparisonId }: { comparisonId: string }) {
   const [url, setUrl] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [pending, startTransition] = useTransition();
-  const tooLong = text.length > MAX_TEXT_LENGTH;
+  const reducedOnServer = text.length > IMPORT_LIMITS.text;
 
   return (
     <form
@@ -51,9 +51,9 @@ export function PasteContentForm({ comparisonId }: { comparisonId: string }) {
         htmlFor="paste-text"
         error={errors.text}
         hint={
-          tooLong
-            ? `${text.length.toLocaleString("fr-FR")} caractères : seuls les ${MAX_TEXT_LENGTH.toLocaleString("fr-FR")} premiers seront analysés.`
-            : `${text.length.toLocaleString("fr-FR")} / ${MAX_TEXT_LENGTH.toLocaleString("fr-FR")} caractères`
+          reducedOnServer
+            ? `${text.length.toLocaleString("fr-FR")} caractères : le texte sera réduit au début de la page et à la zone des tarifs.`
+            : `${text.length.toLocaleString("fr-FR")} caractères`
         }
       >
         <Textarea

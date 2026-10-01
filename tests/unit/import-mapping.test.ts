@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { COMPARISON_PRESETS } from "@/lib/domain/comparison-presets";
 import { mapListingToCriteria, type MappableCriterion } from "@/lib/listing-extract/criteria-mapping";
 import { buildImportNotes } from "@/lib/listing-extract/notes";
-import { bookmarkletPayloadSchema, pastedContentSchema, payloadToSource } from "@/lib/listing-extract/payload";
+import { parseImportPayload, pastedContentSchema } from "@/lib/listing-extract/payload";
 
 const lodging: MappableCriterion[] = COMPARISON_PRESETS.find((p) => p.key === "lodging")!.criteria.map((c, i) => ({
   ...c,
@@ -77,41 +77,75 @@ describe("mapListingToCriteria", () => {
 });
 
 describe("validation des données reçues", () => {
-  it("accepte le formulaire du bookmarklet et ne garde que les balises og/twitter", () => {
-    const parsed = bookmarkletPayloadSchema.parse({
-      v: "1",
-      url: "https://www.booking.com/hotel/jp/apa.fr.html",
-      title: "APA Hotel",
-      meta: JSON.stringify({ "og:title": "APA", description: "ignoré" }),
-      jsonld: JSON.stringify(['{"@type":"Hotel"}']),
-      images: JSON.stringify(["https://cf.bstatic.com/a.jpg"]),
-      text: "Texte",
-    });
-    expect(payloadToSource(parsed)).toEqual({
+  const ok = (raw: Record<string, string>) => {
+    const result = parseImportPayload(raw);
+    if (!result.ok) throw new Error(result.error);
+    return result.source;
+  };
+
+  it("accepte le formulaire du favori et ne garde que les balises og/twitter", () => {
+    expect(
+      ok({
+        v: "2",
+        url: "https://www.booking.com/hotel/jp/apa.fr.html",
+        title: "APA Hotel",
+        meta: JSON.stringify({ "og:title": "APA", description: "ignoré" }),
+        jsonld: JSON.stringify(['{"@type":"Hotel"}']),
+        images: JSON.stringify(["https://cf.bstatic.com/a.jpg"]),
+        text: "Texte",
+        truncated: JSON.stringify(["JSON-LD : 7 blocs → 1"]),
+      }),
+    ).toEqual({
       url: "https://www.booking.com/hotel/jp/apa.fr.html",
       title: "APA Hotel",
       meta: { "og:title": "APA" },
       jsonLd: ['{"@type":"Hotel"}'],
       images: ["https://cf.bstatic.com/a.jpg"],
       text: "Texte",
-      warnings: [],
+      warnings: ["JSON-LD : 7 blocs → 1"],
     });
   });
 
-  it.each([
-    ["texte trop long", { text: "a".repeat(30_001) }],
-    ["URL non http", { url: "javascript:alert(1)" }],
-    ["trop d'images", { images: JSON.stringify(["https://a/1", "https://a/2", "https://a/3", "https://a/4"]) }],
-    ["JSON invalide", { meta: "{" }],
-    ["image non http", { images: JSON.stringify(["file:///etc/passwd"]) }],
-  ])("refuse : %s", (_label, payload) => {
-    expect(bookmarkletPayloadSchema.safeParse(payload).success).toBe(false);
+  it("accepte le texte Booking reçu avec des \\r\\n (cause du rejet) sans le tronquer", () => {
+    // ~29 000 caractères en \n, mais ~30 000+ une fois les sauts de ligne convertis en \r\n par le navigateur
+    const lines = Array.from({ length: 1037 }, (_, i) => `Ligne ${i}`.padEnd(27, "."));
+    const text = lines.join("\r\n");
+    expect(text.length).toBeGreaterThan(30_000);
+    expect(lines.join("\n").length).toBeLessThanOrEqual(30_000);
+    const source = ok({ text });
+    expect(source.text).toBe(lines.join("\n"));
+    expect(source.warnings).toEqual([]);
   });
 
-  it("tronque le texte collé au lieu de le refuser", () => {
-    const parsed = pastedContentSchema.parse({ text: "x".repeat(40_000), url: "" });
-    expect(parsed.text).toHaveLength(30_000);
+  it("tronque au lieu de rejeter, avec un avertissement par champ", () => {
+    const source = ok({
+      url: `https://www.booking.com/hotel/x.html?${"q=1&".repeat(1000)}`,
+      text: `Titre\n${"x".repeat(120_000)}`,
+      meta: "{",
+      images: JSON.stringify(["https://a/1", "https://a/2", "file:///etc/passwd", "https://a/3", "https://a/4"]),
+      jsonld: JSON.stringify([JSON.stringify({ "@type": "Hotel", name: "H", review: "r".repeat(200_000) })]),
+    });
+    expect(source.url).toBe("https://www.booking.com/hotel/x.html");
+    expect(source.text!.length).toBeLessThanOrEqual(30_000);
+    expect(source.images).toEqual(["https://a/1", "https://a/2", "https://a/3"]);
+    expect(source.jsonLd).toEqual([JSON.stringify({ "@type": "Hotel", name: "H" })]);
+    expect(source.warnings).toEqual([
+      "URL : paramètres retirés (réduit par le serveur)",
+      "Balises og/twitter illisibles, ignorées (réduit par le serveur)",
+      expect.stringMatching(/^JSON-LD : 1 bloc → 1, \d+ Ko → 1 Ko.*\(réduit par le serveur\)$/),
+      "Images : 2 ignorée(s) (réduit par le serveur)",
+      expect.stringMatching(/^Texte : 120 006 → \d[\d ]* caractères \(début de page seulement.*\(réduit par le serveur\)$/),
+    ]);
+  });
+
+  it("refuse une adresse qui n'est pas en http(s)", () => {
+    expect(parseImportPayload({ url: "javascript:alert(1)" }).ok).toBe(false);
+  });
+
+  it("copier-coller : accepte un texte long, refuse au-delà de 2 Mo", () => {
+    expect(pastedContentSchema.parse({ text: "x".repeat(150_000), url: "" }).text).toHaveLength(150_000);
     expect(pastedContentSchema.safeParse({ text: "court" }).success).toBe(false);
+    expect(pastedContentSchema.safeParse({ text: "é".repeat(1_000_001) }).success).toBe(false);
   });
 });
 

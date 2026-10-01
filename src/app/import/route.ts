@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { bookmarkletPayloadSchema, MAX_BODY_BYTES, payloadToSource } from "@/lib/listing-extract/payload";
+import { MAX_BODY_BYTES, parseImportPayload } from "@/lib/listing-extract/payload";
 import { createPendingImport } from "@/server/pending-imports";
 
 // POST /import — reçoit le formulaire du bookmarklet (requête cross-site).
 // Ne crée jamais rien directement : stocke un import en attente puis redirige (303) vers la confirmation.
+// Les champs trop longs sont tronqués (avec avertissement) ; seul le plafond de 2 Mo est un motif de refus.
 export async function POST(request: NextRequest) {
   // Chaque cause de rejet a son propre code (affiché sur /import/setup et journalisé).
   const reject = (reason: "trop-volumineux" | "illisible" | "invalide", detail: string) => {
@@ -23,16 +24,15 @@ export async function POST(request: NextRequest) {
   const raw: Record<string, string> = {};
   for (const [key, value] of form.entries()) if (typeof value === "string") raw[key] = value;
 
-  const parsed = bookmarkletPayloadSchema.safeParse(raw);
-  if (!parsed.success) {
+  const parsed = parseImportPayload(raw);
+  if (!parsed.ok) {
     const sizes = Object.entries(raw)
       .map(([k, v]) => `${k}=${v.length}`)
       .join(", ");
-    const issues = parsed.error.issues.map((i) => `${i.path.join(".")} : ${i.message}`).join(" ; ");
-    return reject("invalide", `${issues} (tailles : ${sizes})`);
+    return reject("invalide", `${parsed.error} (tailles : ${sizes})`);
   }
 
-  const pending = await createPendingImport("bookmarklet", payloadToSource(parsed.data));
+  const pending = await createPendingImport("bookmarklet", parsed.source);
   return NextResponse.redirect(new URL(`/import/${pending.id}`, request.url), 303);
 }
 
