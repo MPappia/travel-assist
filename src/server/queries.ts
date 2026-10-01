@@ -30,6 +30,10 @@ export async function getTripOverview(tripId: string) {
           items: { include: { values: true } },
         },
       },
+      routes: {
+        orderBy: { createdAt: "asc" },
+        include: { stops: { orderBy: { position: "asc" }, select: { name: true } } },
+      },
     },
   });
 }
@@ -59,3 +63,13 @@ export async function getComparison(tripId: string, comparisonId: string) {
 }
 
 export type ComparisonWithData = NonNullable<Awaited<ReturnType<typeof getComparison>>>;
+
+export async function listRoutes(tripId: string) {
+  return db.route.findMany({
+    where: { tripId },
+    orderBy: { createdAt: "asc" },
+    include: { stops: { orderBy: { position: "asc" } } },
+  });
+}
+
+export type RouteWithStops = Awaited<ReturnType<typeof listRoutes>>[number];

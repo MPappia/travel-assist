@@ -66,6 +66,12 @@ enum PreviewStatus {
   FAILED
 }
 
+enum RouteMode {
+  DRIVING
+  CYCLING
+  WALKING
+}
+
 model Trip {
   id          String       @id @default(cuid())
   name        String
@@ -81,6 +87,7 @@ model Trip {
   tasks       Task[]
   expenses    Expense[]
   comparisons Comparison[]
+  routes      Route[]
 }
 
 model Task {
@@ -176,6 +183,34 @@ model CriterionValue {
   boolValue   Boolean?
 
   @@unique([itemId, criterionId])
+}
+
+model Route {
+  id        String      @id @default(cuid())
+  tripId    String
+  trip      Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  name      String
+  mode      RouteMode   @default(DRIVING)
+  createdAt DateTime    @default(now())
+  stops     RouteStop[]
+
+  @@index([tripId])
+}
+
+model RouteStop {
+  id       String    @id @default(cuid())
+  routeId  String
+  route    Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  position Int
+  name     String
+  lat      Float
+  lng      Float
+  // Date d'arrivée prévue et nombre de nuits sur place (facultatifs) pour la vue jour par jour.
+  date     DateTime?
+  nights   Int?
+  notes    String    @default("")
+
+  @@index([routeId])
 }
 
 // Cache générique des appels externes (aperçus de liens, géocodage, itinéraires).

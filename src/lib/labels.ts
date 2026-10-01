@@ -64,3 +64,11 @@ export const ITEM_STATUS_LABELS: Record<ItemStatusValue, string> = {
   SELECTED: "Retenu",
   REJECTED: "Écarté",
 };
+
+export const ROUTE_MODES = ["DRIVING", "CYCLING", "WALKING"] as const;
+export type RouteModeValue = (typeof ROUTE_MODES)[number];
+export const ROUTE_MODE_LABELS: Record<RouteModeValue, string> = {
+  DRIVING: "Voiture",
+  CYCLING: "Vélo",
+  WALKING: "À pied",
+};

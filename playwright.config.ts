@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3100;
+const MOCK_PORT = 3101;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -17,11 +18,19 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   // L'application doit avoir été construite (`npm run test:e2e` lance `next build` d'abord).
-  webServer: {
-    command: "node tests/e2e/prepare-db.mjs",
-    url: `http://localhost:${PORT}`,
-    reuseExistingServer: false,
-    timeout: 120_000,
-    env: { PORT: String(PORT) },
-  },
+  webServer: [
+    {
+      command: "node tests/e2e/mock-services.mjs",
+      port: MOCK_PORT,
+      reuseExistingServer: false,
+      env: { MOCK_PORT: String(MOCK_PORT) },
+    },
+    {
+      command: "node tests/e2e/prepare-db.mjs",
+      url: `http://localhost:${PORT}`,
+      reuseExistingServer: false,
+      timeout: 120_000,
+      env: { PORT: String(PORT), MOCK_PORT: String(MOCK_PORT) },
+    },
+  ],
 });

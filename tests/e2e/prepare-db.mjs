@@ -3,7 +3,15 @@ import { execSync } from "node:child_process";
 import { rmSync } from "node:fs";
 
 const port = process.env.PORT ?? "3100";
-const env = { ...process.env, DATABASE_URL: "file:./prisma/e2e.db" };
+const mock = `http://127.0.0.1:${process.env.MOCK_PORT ?? "3101"}`;
+const env = {
+  ...process.env,
+  DATABASE_URL: "file:./prisma/e2e.db",
+  // Services externes remplacés par tests/e2e/mock-services.mjs
+  ORS_BASE_URL: mock,
+  PHOTON_BASE_URL: mock,
+  ORS_API_KEY: "test-key",
+};
 
 for (const suffix of ["", "-journal", "-wal", "-shm"]) rmSync(`prisma/e2e.db${suffix}`, { force: true });
 execSync("npx prisma migrate deploy", { stdio: "inherit", env });

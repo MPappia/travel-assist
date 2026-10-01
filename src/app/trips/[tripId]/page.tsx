@@ -9,7 +9,7 @@ import { summarizeBudget } from "@/lib/domain/budget";
 import { buildComparisonView } from "@/lib/domain/comparison-view";
 import { computeTaskProgress, isOverdue, sortTasksByDueDate } from "@/lib/domain/tasks";
 import { formatDate, formatMoney, nightsBetween, todayKey } from "@/lib/format";
-import { TASK_CATEGORY_LABELS } from "@/lib/labels";
+import { ROUTE_MODE_LABELS, TASK_CATEGORY_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { getTripOverview } from "@/server/queries";
 
@@ -155,6 +155,34 @@ export default async function TripOverviewPage({ params }: PageProps<"/trips/[tr
                   </li>
                 );
               })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {trip.routes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Itinéraires</CardTitle>
+            <CardAction>
+              <Link href={`/trips/${tripId}/route`} className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm">
+                Voir la carte <ArrowRightIcon className="size-3.5" />
+              </Link>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <ul className="grid gap-2 text-sm">
+              {trip.routes.map((route) => (
+                <li key={route.id} className="flex items-center justify-between gap-3">
+                  <Link href={`/trips/${tripId}/route?route=${route.id}`} className="truncate hover:underline">
+                    {route.name}
+                  </Link>
+                  <span className="text-muted-foreground shrink-0 truncate text-xs">
+                    {ROUTE_MODE_LABELS[route.mode]} · {route.stops.length} étape{route.stops.length > 1 ? "s" : ""}
+                    {route.stops.length >= 2 && ` · ${route.stops[0].name} → ${route.stops[route.stops.length - 1].name}`}
+                  </span>
+                </li>
+              ))}
             </ul>
           </CardContent>
         </Card>

@@ -8,6 +8,7 @@ import {
   CRITERION_TYPES,
   EXPENSE_CATEGORIES,
   EXPENSE_STATUSES,
+  ROUTE_MODES,
   TASK_CATEGORIES,
   TRIP_STATUSES,
 } from "@/lib/labels";
@@ -170,4 +171,35 @@ export const itemExpenseSchema = z.object({
   label: z.string().trim().min(1, "Le libellé est obligatoire").max(200),
   amount: requiredMoney,
   status: z.enum(EXPENSE_STATUSES).default("BOOKED"),
+});
+
+// ——— Itinéraires ———
+
+export const routeSchema = z.object({
+  name: z.string().trim().min(1, "Le nom est obligatoire").max(120),
+  mode: z.enum(ROUTE_MODES).default("DRIVING"),
+});
+
+export const newStopSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+});
+
+export const stopDetailsSchema = z.object({
+  name: z.string().trim().min(1, "Le nom est obligatoire").max(200),
+  date: optionalDate,
+  nights: z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value) return null;
+      const n = Number(value);
+      if (!Number.isInteger(n) || n < 0 || n > 60) {
+        ctx.addIssue({ code: "custom", message: "Entre 0 et 60 nuits" });
+        return z.NEVER;
+      }
+      return n;
+    }),
+  notes: z.string().max(2000).default(""),
 });
