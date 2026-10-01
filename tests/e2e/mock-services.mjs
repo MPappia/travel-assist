@@ -1,4 +1,4 @@
-// Faux services Photon + OpenRouteService pour les tests end-to-end (aucun appel réseau réel).
+// Faux services Photon, OpenRouteService et SerpApi pour les tests end-to-end (aucun appel réseau réel).
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 
@@ -6,6 +6,8 @@ import { buildBookingPage } from "../fixtures/listings/build-booking-page.mjs";
 
 const PORT = Number(process.env.MOCK_PORT ?? 3101);
 export const MOCK_ORS_KEY = "test-key";
+export const MOCK_SERPAPI_KEY = "test-serpapi-key";
+let serpApiSearches = 0;
 
 const PLACES = [
   ["Lyon", 45.764, 4.8357, "France"],
@@ -46,6 +48,17 @@ createServer((req, res) => {
   if (req.method === "GET" && url.pathname === "/annonce-volumineuse") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     return res.end(buildBookingPage());
+  }
+  // SerpApi (Google Flights) : allers, retours (departure_token), quota épuisé pour l'origine « QQQ »
+  if (req.method === "GET" && (url.pathname === "/search.json" || url.pathname === "/account.json")) {
+    if (url.searchParams.get("api_key") !== MOCK_SERPAPI_KEY) return json(res, 401, { error: "Invalid API key." });
+    if (url.pathname === "/account.json") {
+      return json(res, 200, { api_key: MOCK_SERPAPI_KEY, searches_per_month: 250, this_month_usage: serpApiSearches, total_searches_left: 250 - serpApiSearches });
+    }
+    if (url.searchParams.get("departure_id") === "QQQ") return json(res, 429, { error: "Your account has run out of searches." });
+    serpApiSearches += 1;
+    const name = url.searchParams.has("departure_token") ? "google-flights-return" : "google-flights-outbound";
+    return json(res, 200, JSON.parse(readFileSync(`tests/fixtures/serpapi/${name}.synthetic.json`, "utf8")));
   }
   if (req.method === "GET" && url.pathname === "/api") {
     const q = (url.searchParams.get("q") ?? "").toLowerCase();

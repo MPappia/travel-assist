@@ -1,0 +1,57 @@
+{
+  "search_metadata": {
+    "id": "synthetic-1",
+    "status": "Success",
+    "google_flights_url": "https://www.google.com/travel/flights?hl=fr&gl=fr&curr=EUR&tfs=synthetic",
+    "total_time_taken": 2.1
+  },
+  "search_parameters": { "engine": "google_flights", "departure_id": "CDG", "arrival_id": "NRT", "outbound_date": "2027-03-19", "return_date": "2027-03-30", "currency": "EUR", "hl": "fr", "type": "1", "adults": 2 },
+  "best_flights": [
+    {
+      "flights": [
+        {
+          "departure_airport": { "name": "Aéroport Paris-Charles de Gaulle", "id": "CDG", "time": "2027-03-19 10:05" },
+          "arrival_airport": { "name": "Aéroport d'Helsinki-Vantaa", "id": "HEL", "time": "2027-03-19 14:00" },
+          "duration": 175,
+          "airplane": "Airbus A321",
+          "airline": "Finnair",
+          "airline_logo": "https://www.gstatic.com/flights/airline_logos/70px/AY.png",
+          "travel_class": "Économie",
+          "flight_number": "AY 1572",
+          "legroom": "76 cm"
+        },
+        {
+          "departure_airport": { "name": "Aéroport d'Helsinki-Vantaa", "id": "HEL", "time": "2027-03-19 17:10" },
+          "arrival_airport": { "name": "Aéroport international de Narita", "id": "NRT", "time": "2027-03-20 8:10" },
+          "duration": 480,
+          "airline": "Finnair",
+          "flight_number": "AY 73",
+          "overnight": true
+        }
+      ],
+      "layovers": [{ "duration": 190, "name": "Aéroport d'Helsinki-Vantaa", "id": "HEL" }],
+      "total_duration": 845,
+      "price": 1248,
+      "type": "Aller-retour",
+      "departure_token": "DEP_TOKEN_AY"
+    }
+  ],
+  "other_flights": [
+    {
+      "flights": [
+        {
+          "departure_airport": { "name": "Aéroport Paris-Charles de Gaulle", "id": "CDG", "time": "2027-03-19 19:30" },
+          "arrival_airport": { "name": "Aéroport international de Narita", "id": "NRT", "time": "2027-03-20 15:55" },
+          "duration": 805,
+          "airline": "Air France",
+          "flight_number": "AF 276"
+        }
+      ],
+      "total_duration": 805,
+      "price": 1390,
+      "departure_token": "DEP_TOKEN_AF"
+    },
+    { "flights": [], "price": 10, "departure_token": "BROKEN" },
+    { "price": 12 }
+  ]
+}

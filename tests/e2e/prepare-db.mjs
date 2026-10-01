@@ -11,6 +11,8 @@ const env = {
   ORS_BASE_URL: mock,
   PHOTON_BASE_URL: mock,
   ORS_API_KEY: "test-key",
+  SERPAPI_BASE_URL: mock,
+  SERPAPI_KEY: "test-serpapi-key",
   // URL injectée dans le bookmarklet ; pas de LLM pendant les tests
   APP_URL: `http://localhost:${port}`,
   LLM_BASE_URL: "",

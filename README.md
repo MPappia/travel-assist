@@ -147,7 +147,8 @@ Le serveur doit accepter `response_format` de type `json_schema` (versions réce
 
 - **Vitest** (`tests/unit`) : formatage, tâches, budget, validation, **scoring** (module pur), vue comparatif, parseur d'aperçu (Open Graph / JSON-LD), garde anti-SSRF, téléchargement HTML contre un serveur HTTP local (redirections, gzip, encodage, taille, délai), OpenRouteService (requête, réponse, erreurs), Photon, plan jour par jour, service d'itinéraire avec `fetch` simulé (clé manquante, cache, quota).
 - Import d'annonces : bookmarklet exécuté dans jsdom (code source, version minifiée générée, mode diagnostic, respect des limites sur une page de structure Booking construite à partir du texte réel), réduction du texte et élagage du JSON-LD, troncature serveur au lieu du rejet, extraction sur les fiches réelles Airbnb (en) et Booking (fr) fournies et sur des fiches synthétiques clairement marquées (Abritel, Airbnb fr, page HTML avec og/JSON-LD), étage LLM avec `fetch` simulé (réussite, délai dépassé, erreur), validation du payload, correspondance avec les critères.
-- **Playwright** (`tests/e2e`) : 9 tests.
+- Vols : extracteur sur fixtures synthétiques Google Flights (fr), Skyscanner (fr) et page générique (en) — segments, escales, prix par personne, devise, bagage —, choix de l'extracteur (domaine, comparatif, contenu ; aucune annonce de logement prise pour un vol), étage LLM des vols, badge d'ancienneté du prix (seuil de 3 jours), client SerpApi avec `fetch` simulé (succès, retour par `departure_token`, quota, clé refusée, erreur, réseau, délai, « aucun résultat », compteur du compte sans la clé).
+- **Playwright** (`tests/e2e`) : 11 tests.
   1. Créer un voyage, des tâches (retard, filtre, cocher, supprimer) et des dépenses (alerte de dépassement), vérifier le tableau de bord.
   2. Comparer 3 logements sur 5 critères, lire le verdict, écarter, retenir et créer la dépense.
   3. Coller un lien qui échoue (et une adresse locale refusée) : l'élément est créé et se complète à la main.
@@ -157,8 +158,10 @@ Le serveur doit accepter `response_format` de type `json_schema` (versions réce
   7. Copier-coller de la fiche Airbnb réelle jusqu'aux critères pré-remplis.
   8. Page d'annonce volumineuse (JSON-LD de plusieurs centaines de Ko, texte de plus de 100 000 caractères) importée sans rejet, réductions signalées.
   9. Annonce importée sans note : score partiel, non pénalisé, signalé dans le tableau et le verdict.
+  10. Copier-coller d'une fiche de vol dans un comparatif « Vols » : vérification (trajets, durées, provenance), ajout, badge « prix relevé aujourd'hui », vol retenu → dépense « Transport ».
+  11. Recherche SerpApi (service simulé) : allers, retour à la demande, ajout au comparatif, recherche répétée servie par le cache, quota atteint.
 
-  Les tests e2e utilisent une base dédiée (`prisma/e2e.db`, recréée à chaque lancement) et un **faux service Photon / ORS local** (`tests/e2e/mock-services.mjs`) : ils ne dépendent ni du réseau ni d'une clé. Le navigateur Chromium de Playwright 1.56 doit être installé (`npx playwright install chromium` si besoin).
+  Les tests e2e utilisent une base dédiée (`prisma/e2e.db`, recréée à chaque lancement) et un **faux service Photon / ORS / SerpApi local** (`tests/e2e/mock-services.mjs`) : ils ne dépendent ni du réseau ni d'une clé. Le navigateur Chromium de Playwright 1.56 doit être installé (`npx playwright install chromium` si besoin).
 
 ## Architecture
 
