@@ -23,6 +23,13 @@ export async function getTripOverview(tripId: string) {
     include: {
       tasks: true,
       expenses: true,
+      comparisons: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          criteria: true,
+          items: { include: { values: true } },
+        },
+      },
     },
   });
 }
@@ -34,3 +41,21 @@ export async function getTripTasks(tripId: string) {
 export async function getTripExpenses(tripId: string) {
   return db.expense.findMany({ where: { tripId }, orderBy: { createdAt: "asc" } });
 }
+
+const comparisonInclude = {
+  criteria: { orderBy: { position: "asc" } },
+  items: {
+    orderBy: { createdAt: "asc" },
+    include: { values: true, expense: { select: { id: true, amountCents: true, status: true } } },
+  },
+} as const;
+
+export async function listComparisons(tripId: string) {
+  return db.comparison.findMany({ where: { tripId }, orderBy: { createdAt: "asc" }, include: comparisonInclude });
+}
+
+export async function getComparison(tripId: string, comparisonId: string) {
+  return db.comparison.findFirst({ where: { id: comparisonId, tripId }, include: comparisonInclude });
+}
+
+export type ComparisonWithData = NonNullable<Awaited<ReturnType<typeof getComparison>>>;

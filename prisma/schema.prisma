@@ -41,20 +41,39 @@ enum ExpenseStatus {
   PAID
 }
 
+enum CriterionType {
+  NUMBER
+  TEXT
+  BOOLEAN
+  RATING
+}
+
+enum CriterionDirection {
+  HIGHER_IS_BETTER
+  LOWER_IS_BETTER
+}
+
+enum ItemStatus {
+  OPTION
+  SELECTED
+  REJECTED
+}
+
 model Trip {
-  id           String       @id @default(cuid())
-  name         String
-  destination  String       @default("")
-  startDate    DateTime?
-  endDate      DateTime?
-  travelers    Int          @default(1)
-  budgetCents  Int?
-  status       TripStatus   @default(IDEA)
-  notes        String       @default("")
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  tasks        Task[]
-  expenses     Expense[]
+  id          String       @id @default(cuid())
+  name        String
+  destination String       @default("")
+  startDate   DateTime?
+  endDate     DateTime?
+  travelers   Int          @default(1)
+  budgetCents Int?
+  status      TripStatus   @default(IDEA)
+  notes       String       @default("")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  tasks       Task[]
+  expenses    Expense[]
+  comparisons Comparison[]
 }
 
 model Task {
@@ -78,7 +97,67 @@ model Expense {
   category         ExpenseCategory @default(OTHER)
   amountCents      Int
   status           ExpenseStatus   @default(ESTIMATED)
+  // Lien optionnel vers l'élément de comparatif qui a généré la dépense (évite les doublons).
+  comparisonItemId String?         @unique
+  comparisonItem   ComparisonItem? @relation(fields: [comparisonItemId], references: [id], onDelete: SetNull)
   createdAt        DateTime        @default(now())
 
   @@index([tripId])
+}
+
+model Comparison {
+  id              String           @id @default(cuid())
+  tripId          String
+  trip            Trip             @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  name            String
+  // Catégorie budgétaire utilisée quand un élément retenu crée une dépense.
+  expenseCategory ExpenseCategory  @default(ACCOMMODATION)
+  createdAt       DateTime         @default(now())
+  criteria        Criterion[]
+  items           ComparisonItem[]
+
+  @@index([tripId])
+}
+
+model Criterion {
+  id           String             @id @default(cuid())
+  comparisonId String
+  comparison   Comparison         @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
+  name         String
+  type         CriterionType      @default(NUMBER)
+  weight       Float              @default(1)
+  direction    CriterionDirection @default(HIGHER_IS_BETTER)
+  unit         String             @default("")
+  position     Int                @default(0)
+  values       CriterionValue[]
+
+  @@index([comparisonId])
+}
+
+model ComparisonItem {
+  id           String           @id @default(cuid())
+  comparisonId String
+  comparison   Comparison       @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
+  title        String
+  url          String?
+  notes        String           @default("")
+  status       ItemStatus       @default(OPTION)
+  createdAt    DateTime         @default(now())
+  values       CriterionValue[]
+  expense      Expense?
+
+  @@index([comparisonId])
+}
+
+model CriterionValue {
+  id          String         @id @default(cuid())
+  itemId      String
+  item        ComparisonItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  criterionId String
+  criterion   Criterion      @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  numberValue Float?
+  textValue   String?
+  boolValue   Boolean?
+
+  @@unique([itemId, criterionId])
 }

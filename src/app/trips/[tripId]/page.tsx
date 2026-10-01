@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertCircleIcon, ArrowRightIcon } from "lucide-react";
+import { AlertCircleIcon, ArrowRightIcon, CheckCircle2Icon, TrophyIcon } from "lucide-react";
 
 import { BudgetAlert } from "@/components/budget/budget-overview";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { summarizeBudget } from "@/lib/domain/budget";
+import { buildComparisonView } from "@/lib/domain/comparison-view";
 import { computeTaskProgress, isOverdue, sortTasksByDueDate } from "@/lib/domain/tasks";
 import { formatDate, formatMoney, nightsBetween, todayKey } from "@/lib/format";
 import { TASK_CATEGORY_LABELS } from "@/lib/labels";
@@ -117,6 +118,47 @@ export default async function TripOverviewPage({ params }: PageProps<"/trips/[tr
           </CardContent>
         </Card>
       </div>
+
+      {trip.comparisons.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Comparatifs</CardTitle>
+            <CardAction>
+              <Link href={`/trips/${tripId}/comparisons`} className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm">
+                Tout voir <ArrowRightIcon className="size-3.5" />
+              </Link>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <ul className="grid gap-2 text-sm">
+              {trip.comparisons.map((comparison) => {
+                const selected = comparison.items.find((i) => i.status === "SELECTED");
+                const leader = buildComparisonView(comparison.criteria, comparison.items).columns.find((c) => c.rank === 1);
+                return (
+                  <li key={comparison.id} className="flex items-center justify-between gap-3">
+                    <Link href={`/trips/${tripId}/comparisons/${comparison.id}`} className="truncate hover:underline">
+                      {comparison.name}
+                    </Link>
+                    <span className="text-muted-foreground flex shrink-0 items-center gap-1 text-xs">
+                      {selected ? (
+                        <>
+                          <CheckCircle2Icon className="text-success size-3.5" /> {selected.title}
+                        </>
+                      ) : leader ? (
+                        <>
+                          <TrophyIcon className="size-3.5" /> {leader.item.title} ({leader.score}/100)
+                        </>
+                      ) : (
+                        `${comparison.items.length} élément${comparison.items.length > 1 ? "s" : ""}`
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {trip.notes && (
         <Card>

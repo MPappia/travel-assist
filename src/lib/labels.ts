@@ -40,3 +40,27 @@ export const EXPENSE_STATUS_LABELS: Record<ExpenseStatusValue, string> = {
   BOOKED: "Réservé",
   PAID: "Payé",
 };
+
+export const CRITERION_TYPES = ["NUMBER", "RATING", "BOOLEAN", "TEXT"] as const;
+export type CriterionTypeValue = (typeof CRITERION_TYPES)[number];
+export const CRITERION_TYPE_LABELS: Record<CriterionTypeValue, string> = {
+  NUMBER: "Nombre",
+  RATING: "Note 1–5",
+  BOOLEAN: "Oui / non",
+  TEXT: "Texte (non noté)",
+};
+
+export const CRITERION_DIRECTIONS = ["HIGHER_IS_BETTER", "LOWER_IS_BETTER"] as const;
+export type CriterionDirectionValue = (typeof CRITERION_DIRECTIONS)[number];
+export const CRITERION_DIRECTION_LABELS: Record<CriterionDirectionValue, string> = {
+  HIGHER_IS_BETTER: "Plus haut = mieux",
+  LOWER_IS_BETTER: "Plus bas = mieux",
+};
+
+export const ITEM_STATUSES = ["OPTION", "SELECTED", "REJECTED"] as const;
+export type ItemStatusValue = (typeof ITEM_STATUSES)[number];
+export const ITEM_STATUS_LABELS: Record<ItemStatusValue, string> = {
+  OPTION: "Option",
+  SELECTED: "Retenu",
+  REJECTED: "Écarté",
+};
