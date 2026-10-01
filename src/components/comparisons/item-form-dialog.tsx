@@ -35,6 +35,8 @@ export interface ItemFormValues {
   title: string;
   url: string | null;
   notes: string;
+  previewDescription?: string | null;
+  previewImage?: string | null;
   values: (StoredCriterionValue & { criterionId: string })[];
 }
 
@@ -152,6 +154,28 @@ export function ItemFormDialog({
                   </FormField>
                 ))}
               </div>
+            </fieldset>
+          )}
+          {item?.url && (
+            <fieldset className="grid gap-3 rounded-lg border p-3">
+              <legend className="px-1 text-sm font-medium">Aperçu du lien</legend>
+              <FormField label="Description" htmlFor="item-preview-description" error={errors.previewDescription}>
+                <Textarea
+                  id="item-preview-description"
+                  name="previewDescription"
+                  defaultValue={item.previewDescription ?? ""}
+                  rows={2}
+                />
+              </FormField>
+              <FormField label="Image (adresse)" htmlFor="item-preview-image" error={errors.previewImage}>
+                <Input
+                  id="item-preview-image"
+                  name="previewImage"
+                  type="url"
+                  defaultValue={item.previewImage ?? ""}
+                  placeholder="https://…"
+                />
+              </FormField>
             </fieldset>
           )}
           <FormField label="Notes" htmlFor="item-notes" error={errors.notes}>

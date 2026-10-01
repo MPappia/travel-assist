@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { ItemExpenseDialog } from "@/components/comparisons/item-expense-dialog";
 import { ItemFormDialog, type ItemFormCriterion, type ItemFormValues } from "@/components/comparisons/item-form-dialog";
 import { ComparisonVerdict } from "@/components/comparisons/comparison-verdict";
+import { LinkPreviewCard, type PreviewFields } from "@/components/comparisons/link-preview-card";
+import { PasteLinkForm } from "@/components/comparisons/paste-link-form";
 import { ConfirmDialog } from "@/components/confirm-delete-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,11 +48,9 @@ import {
 import { cn } from "@/lib/utils";
 import { deleteComparisonItem, setComparisonItemStatus } from "@/server/actions/comparisons";
 
-export interface TableItem extends ItemFormValues {
+export interface TableItem extends Omit<ItemFormValues, "previewDescription" | "previewImage">, PreviewFields {
   status: ItemStatusValue;
   expense: { id: string; amountCents: number; status: ExpenseStatusValue } | null;
-  /** Contenu supplémentaire affiché sous le titre (aperçu de lien). */
-  header?: React.ReactNode;
 }
 
 export interface ComparisonTableProps {
@@ -58,8 +58,6 @@ export interface ComparisonTableProps {
   expenseCategory: ExpenseCategoryValue;
   criteria: (ViewCriterion & ItemFormCriterion)[];
   items: TableItem[];
-  /** Bouton(s) d'ajout supplémentaires (ex. coller un lien). */
-  addSlot?: React.ReactNode;
 }
 
 const STATUS_VARIANT: Record<ItemStatusValue, React.ComponentProps<typeof Badge>["variant"]> = {
@@ -68,7 +66,7 @@ const STATUS_VARIANT: Record<ItemStatusValue, React.ComponentProps<typeof Badge>
   REJECTED: "secondary",
 };
 
-export function ComparisonTable({ comparisonId, expenseCategory, criteria, items, addSlot }: ComparisonTableProps) {
+export function ComparisonTable({ comparisonId, expenseCategory, criteria, items }: ComparisonTableProps) {
   const [sortByScore, setSortByScore] = useState(true);
   const [editing, setEditing] = useState<TableItem | null>(null);
   const [deleting, setDeleting] = useState<TableItem | null>(null);
@@ -92,7 +90,7 @@ export function ComparisonTable({ comparisonId, expenseCategory, criteria, items
       comparisonId={comparisonId}
       criteria={criteria}
       trigger={
-        <Button variant={addSlot ? "outline" : "default"}>
+        <Button variant="outline">
           <PlusIcon />
           Ajouter manuellement
         </Button>
@@ -105,8 +103,8 @@ export function ComparisonTable({ comparisonId, expenseCategory, criteria, items
       <ComparisonVerdict explanation={view.explanation} columns={view.columns} titles={titles} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {addSlot}
+        <div className="flex w-full flex-wrap items-start gap-2 sm:w-auto">
+          <PasteLinkForm comparisonId={comparisonId} />
           {addButton}
         </div>
         {items.length > 1 && (
@@ -124,7 +122,7 @@ export function ComparisonTable({ comparisonId, expenseCategory, criteria, items
 
       {items.length === 0 ? (
         <p className="text-muted-foreground rounded-xl border border-dashed p-8 text-center text-sm">
-          Aucun élément pour l&apos;instant. Ajoutez au moins deux options pour les comparer.
+          Aucun élément pour l&apos;instant. Collez le lien d&apos;une annonce ou ajoutez une option à la main.
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border">
@@ -216,7 +214,7 @@ export function ComparisonTable({ comparisonId, expenseCategory, criteria, items
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    {col.item.header}
+                    <LinkPreviewCard item={col.item} />
                   </th>
                 ))}
               </tr>
@@ -231,7 +229,11 @@ export function ComparisonTable({ comparisonId, expenseCategory, criteria, items
                   <td key={col.item.id} className="border-l p-3" data-testid="comparison-score">
                     {col.score === null ? (
                       <span className="text-muted-foreground text-xs">
-                        {col.item.status === "REJECTED" ? "Hors course" : "Pas de critère noté"}
+                        {col.item.status === "REJECTED"
+                          ? "Hors course"
+                          : view.scoredCriteriaCount === 0
+                            ? "Pas de critère noté"
+                            : "À compléter"}
                       </span>
                     ) : (
                       <div className="grid gap-1.5">

@@ -59,6 +59,13 @@ enum ItemStatus {
   REJECTED
 }
 
+enum PreviewStatus {
+  NONE
+  OK
+  PARTIAL
+  FAILED
+}
+
 model Trip {
   id          String       @id @default(cuid())
   name        String
@@ -135,16 +142,25 @@ model Criterion {
 }
 
 model ComparisonItem {
-  id           String           @id @default(cuid())
-  comparisonId String
-  comparison   Comparison       @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
-  title        String
-  url          String?
-  notes        String           @default("")
-  status       ItemStatus       @default(OPTION)
-  createdAt    DateTime         @default(now())
-  values       CriterionValue[]
-  expense      Expense?
+  id                 String           @id @default(cuid())
+  comparisonId       String
+  comparison         Comparison       @relation(fields: [comparisonId], references: [id], onDelete: Cascade)
+  title              String
+  url                String?
+  notes              String           @default("")
+  status             ItemStatus       @default(OPTION)
+  // Aperçu de lien (Open Graph / JSON-LD), éditable à la main.
+  previewStatus      PreviewStatus    @default(NONE)
+  previewImage       String?
+  previewTitle       String?
+  previewDescription String?
+  previewSiteName    String?
+  previewDomain      String?
+  previewError       String?
+  previewFetchedAt   DateTime?
+  createdAt          DateTime         @default(now())
+  values             CriterionValue[]
+  expense            Expense?
 
   @@index([comparisonId])
 }
@@ -160,4 +176,11 @@ model CriterionValue {
   boolValue   Boolean?
 
   @@unique([itemId, criterionId])
+}
+
+// Cache générique des appels externes (aperçus de liens, géocodage, itinéraires).
+model ApiCache {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
 }

@@ -6,6 +6,7 @@ import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { db } from "@/lib/db";
 import { parseCriterionInput, type StoredCriterionValue } from "@/lib/domain/criteria-values";
 import type { ItemStatusValue } from "@/lib/labels";
+import { getLinkPreview, type LinkPreviewResult } from "@/server/link-preview";
 import { ITEM_STATUSES } from "@/lib/labels";
 import {
   comparisonItemSchema,
@@ -13,6 +14,7 @@ import {
   flattenErrors,
   formDataToObject,
   itemExpenseSchema,
+  itemUrlSchema,
   type FieldErrors,
 } from "@/lib/validation";
 
@@ -123,13 +125,85 @@ async function writeItemValues(itemId: string, values: { criterionId: string; va
   );
 }
 
+/** Champs d'aperçu à enregistrer en base à partir d'un résultat d'extraction. */
+function previewData(preview: LinkPreviewResult) {
+  return {
+    previewStatus: preview.status,
+    previewTitle: preview.title,
+    previewDescription: preview.description,
+    previewImage: preview.image,
+    previewSiteName: preview.siteName,
+    previewDomain: preview.domain || null,
+    previewError: preview.error,
+    previewFetchedAt: new Date(preview.fetchedAt),
+  };
+}
+
+/** Données d'item issues du formulaire : les champs d'aperçu ne sont modifiés que s'ils sont présents. */
+function itemData(data: ReturnType<typeof comparisonItemSchema.parse>) {
+  const { previewDescription, previewImage, ...rest } = data;
+  return {
+    ...rest,
+    ...(previewDescription !== undefined && { previewDescription: previewDescription || null }),
+    ...(previewImage !== undefined && { previewImage }),
+  };
+}
+
+/**
+ * Crée un élément à partir d'une URL collée : l'aperçu est extrait côté serveur.
+ * L'élément est créé même si l'extraction échoue (le message est conservé et affiché discrètement).
+ */
+export async function createItemFromUrl(
+  comparisonId: string,
+  rawUrl: string,
+): Promise<ActionResult<{ id: string; status: LinkPreviewResult["status"]; error: string | null }>> {
+  const parsed = itemUrlSchema.safeParse({ url: rawUrl });
+  if (!parsed.success) return fail("Adresse invalide", flattenErrors(parsed.error));
+  const url = parsed.data.url;
+
+  const preview = await getLinkPreview(url);
+  const item = await db.comparisonItem.create({
+    data: {
+      comparisonId,
+      url,
+      title: preview.title ?? preview.domain ?? url,
+      ...previewData(preview),
+    },
+  });
+  revalidateTrip(await tripIdOfComparison(comparisonId));
+  return ok({ id: item.id, status: preview.status, error: preview.error });
+}
+
+/** Relance l'extraction (sans cache). Le titre n'est remplacé que s'il n'a pas été modifié à la main. */
+export async function refreshItemPreview(
+  itemId: string,
+): Promise<ActionResult<{ status: LinkPreviewResult["status"]; error: string | null }>> {
+  const item = await db.comparisonItem.findUniqueOrThrow({ where: { id: itemId } });
+  if (!item.url) return fail("Cet élément n'a pas de lien");
+
+  const preview = await getLinkPreview(item.url, { force: true });
+  const titleWasAutomatic = [item.previewTitle, item.previewDomain, item.url].includes(item.title);
+  const keepManual = preview.status === "FAILED";
+  await db.comparisonItem.update({
+    where: { id: itemId },
+    data: {
+      ...(keepManual
+        ? { previewStatus: "FAILED", previewError: preview.error, previewFetchedAt: new Date(preview.fetchedAt) }
+        : previewData(preview)),
+      ...(titleWasAutomatic && preview.title ? { title: preview.title } : {}),
+    },
+  });
+  revalidateTrip(await tripIdOfComparison(item.comparisonId));
+  return ok({ status: preview.status, error: preview.error });
+}
+
 export async function createComparisonItem(comparisonId: string, formData: FormData): Promise<ActionResult<{ id: string }>> {
   const parsed = comparisonItemSchema.safeParse(formDataToObject(formData));
   const { values, errors } = await parseItemValues(comparisonId, formData);
   if (!parsed.success || Object.keys(errors).length > 0) {
     return fail("Formulaire invalide", { ...(parsed.success ? {} : flattenErrors(parsed.error)), ...errors });
   }
-  const item = await db.comparisonItem.create({ data: { ...parsed.data, comparisonId } });
+  const item = await db.comparisonItem.create({ data: { ...itemData(parsed.data), comparisonId } });
   await writeItemValues(item.id, values);
   revalidateTrip(await tripIdOfComparison(comparisonId));
   return ok({ id: item.id });
@@ -142,7 +216,7 @@ export async function updateComparisonItem(itemId: string, formData: FormData): 
   if (!parsed.success || Object.keys(errors).length > 0) {
     return fail("Formulaire invalide", { ...(parsed.success ? {} : flattenErrors(parsed.error)), ...errors });
   }
-  await db.comparisonItem.update({ where: { id: itemId }, data: parsed.data });
+  await db.comparisonItem.update({ where: { id: itemId }, data: itemData(parsed.data) });
   await writeItemValues(itemId, values);
   revalidateTrip(await tripIdOfComparison(current.comparisonId));
   return ok();

@@ -7,7 +7,8 @@
 // - BOOLEAN : oui = 1, non = 0.
 // - Le sens « plus bas = mieux » inverse la note normalisée (1 − s).
 // - TEXT : affiché mais non noté (poids ignoré).
-// - Valeur manquante : 0 pour ce critère (un élément incomplet ne peut pas gagner « par défaut »).
+// - Valeur manquante : 0 pour ce critère (un élément incomplet ne peut pas gagner « par défaut ») ;
+//   un élément sans aucune valeur notée n'a pas de score (il n'est pas classé).
 // Score final = Σ(poids × note) / Σ(poids des critères notés) × 100, arrondi à l'entier.
 
 export type CriterionKind = "NUMBER" | "TEXT" | "BOOLEAN" | "RATING";
@@ -39,7 +40,7 @@ export interface CriterionScore {
 
 export interface ItemScore {
   itemId: string;
-  /** Score 0–100, null s'il n'y a aucun critère noté. */
+  /** Score 0–100, null s'il n'y a aucun critère noté ou aucune valeur renseignée. */
   score: number | null;
   byCriterion: Record<string, CriterionScore>;
   /** Nombre de critères notés sans valeur. */
@@ -69,8 +70,7 @@ function numericValue(type: CriterionKind, value: CriterionRawValue): number | n
 function rawNormalized(type: CriterionKind, value: number, min: number, max: number): number {
   if (type === "RATING") return (value - 1) / 4;
   if (type === "BOOLEAN") return value;
-  if (max === min) return 1;
-  return (value - min) / (max - min);
+  return max === min ? 1 : (value - min) / (max - min);
 }
 
 export function computeScores(criteria: readonly ScoringCriterion[], items: readonly ScoringItem[]): ScoringResult {
@@ -113,8 +113,10 @@ export function computeScores(criteria: readonly ScoringCriterion[], items: read
         byCriterion[c.id] = { normalized: 0, points: 0, isBest: false, missing: true };
         continue;
       }
+      // Une seule valeur distincte (critère numérique) : tout le monde est « le meilleur », quel que soit le sens.
+      const tie = c.type === "NUMBER" && stat.min === stat.max;
       const base = rawNormalized(c.type, value, stat.min, stat.max);
-      const normalized = c.direction === "HIGHER_IS_BETTER" ? base : 1 - base;
+      const normalized = tie ? 1 : c.direction === "HIGHER_IS_BETTER" ? base : 1 - base;
       weighted += c.weight * normalized;
       byCriterion[c.id] = {
         normalized,
@@ -126,7 +128,7 @@ export function computeScores(criteria: readonly ScoringCriterion[], items: read
 
     return {
       itemId: item.id,
-      score: totalWeight > 0 ? Math.round((weighted / totalWeight) * 100) : null,
+      score: totalWeight > 0 && missingCount < scored.length ? Math.round((weighted / totalWeight) * 100) : null,
       byCriterion,
       missingCount,
     };
@@ -172,8 +174,10 @@ export function explainWinner(
   criteria: readonly ScoringCriterion[],
   ranked: readonly ItemScore[],
 ): WinnerExplanation | null {
-  const [winner, runnerUp] = ranked;
+  const [winner, second] = ranked;
   if (!winner || winner.score === null) return null;
+  // Un second sans score (aucune valeur) n'est pas un point de comparaison.
+  const runnerUp = second?.score != null ? second : undefined;
 
   const reasons: WinnerReason[] = criteria.filter(isScorable).map((c) => ({
     criterionId: c.id,
@@ -184,7 +188,7 @@ export function explainWinner(
   return {
     winnerId: winner.itemId,
     runnerUpId: runnerUp?.itemId ?? null,
-    margin: runnerUp?.score != null ? winner.score - runnerUp.score : winner.score,
+    margin: runnerUp ? winner.score - (runnerUp.score ?? 0) : winner.score,
     strengths: reasons.filter((r) => r.delta > 0.5).sort((a, b) => b.delta - a.delta),
     weaknesses: reasons.filter((r) => r.delta < -0.5).sort((a, b) => a.delta - b.delta),
   };

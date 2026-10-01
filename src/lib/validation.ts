@@ -118,6 +118,15 @@ export const comparisonSchema = z.object({
 });
 export type ComparisonInput = z.output<typeof comparisonSchema>;
 
+function toHttpUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 /** URL http(s) facultative. */
 export const optionalHttpUrl = z
   .string()
@@ -125,20 +134,36 @@ export const optionalHttpUrl = z
   .optional()
   .transform((value, ctx) => {
     if (!value) return null;
-    try {
-      const url = new URL(value);
-      if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("protocole");
-      return url.toString();
-    } catch {
+    const url = toHttpUrl(value);
+    if (!url) {
       ctx.addIssue({ code: "custom", message: "Adresse http(s) invalide" });
       return z.NEVER;
     }
+    return url;
   });
 
 export const comparisonItemSchema = z.object({
   title: z.string().trim().min(1, "Le titre est obligatoire").max(200),
   url: optionalHttpUrl,
   notes: z.string().max(5000).default(""),
+  // Champs d'aperçu corrigibles à la main (facultatifs dans le formulaire).
+  previewDescription: z.string().trim().max(1000).optional(),
+  previewImage: optionalHttpUrl.optional(),
+});
+
+export const itemUrlSchema = z.object({
+  url: z
+    .string()
+    .trim()
+    .min(1, "Collez une adresse")
+    .transform((value, ctx) => {
+      const url = toHttpUrl(value);
+      if (!url) {
+        ctx.addIssue({ code: "custom", message: "Adresse http(s) invalide" });
+        return z.NEVER;
+      }
+      return url;
+    }),
 });
 
 export const itemExpenseSchema = z.object({

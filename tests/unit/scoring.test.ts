@@ -84,6 +84,31 @@ describe("computeScores", () => {
     expect(d.score).toBe(Math.round((3 / 9) * 100));
   });
 
+  it("donne la note maximale à une valeur unique, même en « plus bas = mieux »", () => {
+    const r = computeScores(
+      [{ id: "prix", name: "Prix", type: "NUMBER", weight: 1, direction: "LOWER_IS_BETTER" }],
+      [
+        { id: "1", values: { prix: 640 } },
+        { id: "2", values: {} },
+      ],
+    );
+    expect(r.items[0].score).toBe(100);
+    expect(r.items[0].byCriterion.prix.isBest).toBe(true);
+    expect(r.items[1].score).toBeNull();
+    const explanation = explainWinner(
+      [{ id: "prix", name: "Prix", type: "NUMBER", weight: 1, direction: "LOWER_IS_BETTER" }],
+      rankByScore(r.items),
+    );
+    expect(explanation?.runnerUpId).toBeNull();
+  });
+
+  it("ne note pas un élément sans aucune valeur", () => {
+    const r = computeScores(criteria, [...items, { id: "vide", values: { quartier: "Baixa" } }]);
+    const vide = r.items.find((s) => s.itemId === "vide")!;
+    expect(vide.score).toBeNull();
+    expect(rankByScore(r.items).at(-1)?.itemId).toBe("vide");
+  });
+
   it("renvoie un score nul sans critère noté", () => {
     const r = computeScores([criteria[5]], items);
     expect(r.items.every((s) => s.score === null)).toBe(true);
